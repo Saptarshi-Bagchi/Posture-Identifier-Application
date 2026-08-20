@@ -2,8 +2,12 @@
   "name": "desktop-app",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "electron/main.js",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron": "electron electron/main.js",
+    "start": "npm run build && npm run electron",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

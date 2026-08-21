@@ -2,28 +2,40 @@ const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen } = require
 const path = require('path')
 const fs = require('fs')
 
+app.disableHardwareAcceleration()
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-gpu-compositing')
+app.commandLine.appendSwitch('in-process-gpu')
+
 let mainWindow
 let trayPopup
 let tray
 let isQuitting = false
 let monitoringPaused = false
+const isDevelopment = process.env.POSTUREGUARD_DEV === '1'
 
-const dashboardUrl = () => `file://${path.join(__dirname, '..', 'dist', 'index.html')}`
+const rendererEntry = () => isDevelopment
+  ? 'http://localhost:5173'
+  : `file://${path.join(__dirname, '..', '..', 'dist', 'index.html')}`
 
 function createTrayImage(fileName) {
-  const iconPath = path.join(__dirname, '..', 'assets', fileName)
+  const iconPath = path.join(__dirname, '..', '..', 'src', 'assets', fileName)
   return fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty()
 }
 
 function createMainWindow() {
+  const appIconPath = path.join(__dirname, '..', '..', 'src', 'assets', 'icon.ico')
   mainWindow = new BrowserWindow({
+    title: 'PostureGuard — Precision Health',
     width: 1080,
     height: 760,
     minWidth: 900,
     minHeight: 620,
     show: false,
+    skipTaskbar: false,
+    icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
     autoHideMenuBar: true,
-    backgroundColor: '#0b111b',
+    backgroundColor: '#171b12',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -31,7 +43,13 @@ function createMainWindow() {
     },
   })
 
-  mainWindow.loadURL(dashboardUrl())
+  if (isDevelopment) {
+    mainWindow.loadURL(rendererEntry())
+    mainWindow.webContents.openDevTools()
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'))
+  }
+  mainWindow.once('ready-to-show', () => mainWindow.show())
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault()
@@ -53,7 +71,7 @@ function createTrayPopup() {
     frame: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    backgroundColor: '#0b111b',
+    backgroundColor: '#171b12',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -61,7 +79,8 @@ function createTrayPopup() {
     },
   })
 
-  trayPopup.loadURL(`${dashboardUrl()}?view=tray`)
+  if (isDevelopment) trayPopup.loadURL(`${rendererEntry()}?view=tray`)
+  else trayPopup.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'), { query: { view: 'tray' } })
   trayPopup.on('blur', () => trayPopup.hide())
   trayPopup.on('closed', () => { trayPopup = null })
 }
@@ -98,14 +117,14 @@ function buildTrayMenu() {
       },
     },
     { type: 'separator' },
-    { label: 'Settings', click: openDashboard },
+    { label: 'Device & Settings', click: openDashboard },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit() } },
   ])
 }
 
 function createTray() {
-  tray = new Tray(createTrayImage('tray-icon.png'))
+  tray = new Tray(createTrayImage('tray-icon-32.png'))
   tray.setToolTip('PostureGuard')
   tray.setContextMenu(buildTrayMenu())
   tray.on('click', showTrayPopup)

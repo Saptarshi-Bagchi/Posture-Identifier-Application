@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root,
+  #root * {
+    transition-property: background-color, color, border-color, box-shadow;
+    transition-duration: 300ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  html {
+    min-width: 320px;
+    background: #171b12;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    font-family: "Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  select,
+  input {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgb(198 163 79 / 0.28);
+  }
+}
+
+@layer utilities {
+  [class~="bg-[#051f20]"] { background-color: #171b12 !important; }
+  [class~="bg-[#0b2b26]"] { background-color: #24291a !important; }
+  [class~="bg-[#163832]"] { background-color: #303622 !important; }
+  [class~="border-[#235347]"] { border-color: #596143 !important; }
+  [class~="text-[#8eb69b]"] { color: #bdc58c !important; }
+  [class~="text-[#daf1de]"] { color: #f3f0d5 !important; }
+  [class~="bg-[#8eb69b]"] { background-image: linear-gradient(135deg, #707b45 0%, #c6a34f 55%, #8fa36b 100%) !important; background-color: transparent !important; }
+  [class~="border-[#8eb69b]"] { border-color: #c6a34f !important; }
+  [class~="text-[#051f20]"] { color: #171b12 !important; }
+  svg [stroke="#22d3ee"] { stroke: #b9ae62 !important; }
+  svg [stroke="#6366f1"] { stroke: #55718c !important; }
+  svg [fill="#22d3ee"] { fill: #b9ae62 !important; }
+}
+
+.theme-light .bg-brand-surface { background-color: #ffffff !important; }
+.theme-light .bg-brand-panel { background-color: #f1f5f9 !important; }
+.theme-light .bg-brand-navy { background-color: #f8fafc !important; }
+.theme-light .border-brand-border { border-color: #cbd5e1 !important; }
+.theme-light [class~="bg-[#051f20]"] { background-color: #f8fafc !important; }
+.theme-light [class~="bg-[#0b2b26]"] { background-color: #ffffff !important; }
+.theme-light [class~="bg-[#163832]"] { background-color: #f1f5f9 !important; }
+.theme-light [class~="border-[#235347]"] { border-color: #cbd5e1 !important; }
+.theme-light [class~="text-[#8eb69b]"] { color: #64748b !important; }
+.theme-light [class~="text-[#daf1de]"] { color: #0f172a !important; }
+.theme-light [class~="text-[#051f20]"] { color: #0b1120 !important; }
+.theme-light [class~="bg-[#8eb69b]"] { background-image: linear-gradient(135deg, #707b45 0%, #c6a34f 55%, #8fa36b 100%) !important; }
+.theme-light svg text { fill: #64748b !important; }
+.theme-light svg [stroke="#235347"] { stroke: #cbd5e1 !important; }
+.theme-light svg [stroke="#8eb69b"] { stroke: #2563eb !important; }
+.theme-light svg [fill="#8eb69b"] { fill: #2563eb !important; }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

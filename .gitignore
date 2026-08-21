@@ -11,7 +11,6 @@ out/
 
 # Electron build artifacts
 release/
-electron-builder-output/
 
 # Environment variables
 .env
@@ -50,3 +49,4 @@ coverage/
 # Misc
 *.tsbuildinfo
 .cache/
+.npm-cache/

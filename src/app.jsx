@@ -36,7 +36,7 @@ function AppShell() {
   const [darkMode, setDarkMode] = useState(true)
   const Page = pages[activeTab]
   const pageTitle = activeTab === 'Dashboard' ? 'Good morning, Alex' : activeTab
-  const themeClass = darkMode ? 'bg-brand-navy text-slate-100' : 'bg-slate-100 text-slate-900'
+  const themeClass = darkMode ? 'theme-dark' : 'theme-light'
   return <div className={`min-h-screen ${themeClass} ${darkMode ? 'theme-dark' : 'theme-light'}`}><Sidebar device={postureGuardMockData.device} activeTab={activeTab} onNavigate={setActiveTab} /><main className="min-h-screen lg:ml-60"><div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 lg:px-10 lg:py-8"><TopBar title={pageTitle} darkMode={darkMode} onThemeChange={setDarkMode} device={postureGuardMockData.device} /><div className="mt-6"><ErrorBoundary key={activeTab}><Page data={postureGuardMockData} onNavigate={setActiveTab} darkMode={darkMode} onThemeChange={setDarkMode} /></ErrorBoundary></div></div></main></div>
 }
 

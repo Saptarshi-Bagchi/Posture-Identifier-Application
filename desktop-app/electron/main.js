@@ -35,7 +35,7 @@ function createMainWindow() {
     skipTaskbar: false,
     icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
     autoHideMenuBar: true,
-    backgroundColor: '#190019',
+    backgroundColor: '#0a060e',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -71,7 +71,7 @@ function createTrayPopup() {
     frame: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    backgroundColor: '#190019',
+    backgroundColor: '#0a060e',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

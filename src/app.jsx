@@ -6,6 +6,7 @@ import AnalyticsPage from './components/tabs/Analytics/Page'
 import AlertsPage from './components/tabs/Alerts/Page'
 import DeviceSettingsPage from './components/tabs/DeviceSettings/Page'
 import PostureAlmanacPage from './components/tabs/PostureAlmanac/Page'
+import ConnectDevicePage from './components/tabs/ConnectDevice/Page'
 import LoginPage from './components/posturesync/LoginPage'
 import Sidebar from './components/dashboard/Sidebar'
 import TopBar from './components/dashboard/TopBar'
@@ -15,6 +16,7 @@ import ErrorBoundary from './components/posturesync/ErrorBoundary'
 
 const pages = {
   Dashboard: DashboardPage,
+  'Connect ESP32': ConnectDevicePage,
   'Live Monitoring': LiveMonitoringPage,
   'Laptop Control': LaptopControlPage,
   Analytics: AnalyticsPage,
@@ -34,10 +36,12 @@ function TrayPopup() {
 function AppShell() {
   const [activeTab, setActiveTab] = useState('Dashboard')
   const [darkMode, setDarkMode] = useState(true)
+  const [deviceConnected, setDeviceConnected] = useState(false)
   const Page = pages[activeTab]
+  const device = { ...postureGuardMockData.device, connected: deviceConnected, bluetooth: deviceConnected ? 'Connected' : 'Disconnected' }
   const pageTitle = activeTab === 'Dashboard' ? 'Good morning, Alex' : activeTab
   const themeClass = darkMode ? 'theme-dark' : 'theme-light'
-  return <div className={`min-h-screen ${themeClass} ${darkMode ? 'theme-dark' : 'theme-light'}`}><Sidebar device={postureGuardMockData.device} activeTab={activeTab} onNavigate={setActiveTab} /><main className="min-h-screen lg:ml-60"><div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 lg:px-10 lg:py-8"><TopBar title={pageTitle} darkMode={darkMode} onThemeChange={setDarkMode} device={postureGuardMockData.device} /><div className="mt-6"><ErrorBoundary key={activeTab}><Page data={postureGuardMockData} onNavigate={setActiveTab} darkMode={darkMode} onThemeChange={setDarkMode} /></ErrorBoundary></div></div></main></div>
+  return <div className={`min-h-screen ${themeClass} ${darkMode ? 'theme-dark' : 'theme-light'}`}><Sidebar device={device} activeTab={activeTab} onNavigate={setActiveTab} /><main className="min-h-screen lg:ml-60"><div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 lg:px-10 lg:py-8"><TopBar title={pageTitle} darkMode={darkMode} onThemeChange={setDarkMode} device={device} /><div className="mt-6"><ErrorBoundary key={activeTab}><Page data={{ ...postureGuardMockData, device }} device={device} onConnectionChange={setDeviceConnected} onNavigate={setActiveTab} darkMode={darkMode} onThemeChange={setDarkMode} /></ErrorBoundary></div></div></main></div>
 }
 
 export default function App() {

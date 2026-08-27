@@ -12,6 +12,7 @@ let trayPopup
 let tray
 let isQuitting = false
 let monitoringPaused = false
+let bluetoothSelectionCallback = null
 const isDevelopment = process.env.POSTUREGUARD_DEV === '1'
 
 const rendererEntry = () => isDevelopment
@@ -50,6 +51,11 @@ function createMainWindow() {
     mainWindow.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'))
   }
   mainWindow.once('ready-to-show', () => mainWindow.show())
+  mainWindow.webContents.on('select-bluetooth-device', (event, devices, callback) => {
+    event.preventDefault()
+    bluetoothSelectionCallback = callback
+    mainWindow.webContents.send('bluetooth-devices', devices.map(({ deviceId, deviceName }) => ({ deviceId, deviceName })))
+  })
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault()
@@ -143,6 +149,16 @@ app.whenReady().then(() => {
     monitoringPaused = !monitoringPaused
     if (tray) tray.setContextMenu(buildTrayMenu())
     return !monitoringPaused
+  })
+  ipcMain.handle('select-bluetooth-device', (_event, deviceId) => {
+    if (!bluetoothSelectionCallback) return false
+    bluetoothSelectionCallback(deviceId)
+    bluetoothSelectionCallback = null
+    return true
+  })
+  ipcMain.handle('cancel-bluetooth-device', () => {
+    if (bluetoothSelectionCallback) bluetoothSelectionCallback('')
+    bluetoothSelectionCallback = null
   })
   ipcMain.handle('set-launch-on-startup', (_event, enabled) => {
     app.setLoginItemSettings({ openAtLogin: Boolean(enabled) })

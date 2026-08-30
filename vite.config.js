@@ -15,12 +15,12 @@ module.exports = defineConfig({
     assetsInlineLimit: 0,
     rollupOptions: {
       output: {
-        entryFileNames: 'postureguard.js',
+        entryFileNames: 'ispa.js',
         chunkFileNames: 'chunks/[name].js',
         assetFileNames: (assetInfo) => {
           const assetName = assetInfo.name || ''
-          if (assetName.endsWith('.css')) return 'postureguard.css'
-          if (assetName.includes('postureguard-logo')) return 'assets/postureguard-logo[extname]'
+          if (assetName.endsWith('.css')) return 'ispa.css'
+          if (assetName.includes('ispa-logo')) return 'assets/ispa-logo[extname]'
           return 'assets/[name][extname]'
         },
       },

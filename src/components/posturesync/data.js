@@ -8,7 +8,6 @@ import lateralLean from '../../assets/postures/lateral_lean.jpg'
 import asymmetricalSlouch from '../../assets/postures/asymmetrical_slouch.jpg'
 
 export const ispaData = {
-  user: { name: '', email: '' },
   device: { id: 'ESP32', connected: false, bluetooth: 'Waiting for telemetry' },
   telemetry: [], biometricStream: [], alerts: [],
   postureAlmanac: [

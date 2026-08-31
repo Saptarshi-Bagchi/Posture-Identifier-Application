@@ -1,9 +1,0 @@
-import { useState } from 'react'
-import { Icon } from '../../dashboard/Icon'
-import { card, SectionTitle } from '../../posturesync/Shared'
-
-export default function AlertsPage({ data }) {
-  const [filter, setFilter] = useState('All')
-  const visible = filter === 'All' ? data.alerts : data.alerts.filter((alert) => alert.severity === filter.toLowerCase())
-  return <div className="space-y-6"><div><p className="text-xs font-bold uppercase tracking-wider text-[#8eb69b]">Alerts</p><h1 className="mt-1 text-2xl font-bold">Live posture alerts</h1><p className="mt-2 text-sm text-[#8eb69b]">Alerts are created only when the ESP32 reports an unsafe posture.</p></div><section className={card}><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><SectionTitle eyebrow="Received events" title={`${data.alerts.length} alert${data.alerts.length === 1 ? '' : 's'} this session`} /><div className="flex gap-2">{['All', 'Poor'].map((item) => <button key={item} type="button" onClick={() => setFilter(item)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${filter === item ? 'bg-[#8eb69b] text-[#051f20]' : 'bg-[#163832] text-[#8eb69b]'}`}>{item}</button>)}</div></div>{visible.length ? <div className="space-y-3">{visible.map((alert) => <div key={alert.id} className="flex items-start gap-4 rounded-xl border border-[#235347] bg-[#051f20] p-4"><span className="rounded-xl bg-orange-400/10 p-2 text-orange-400"><Icon name="alert" size={20} /></span><div className="flex-1"><div className="flex justify-between gap-3"><p className="font-bold">{alert.type}</p><time className="text-xs text-[#8eb69b]">{alert.time}</time></div><p className="mt-1 text-sm text-[#8eb69b]">{alert.description}</p></div></div>)}</div> : <p className="rounded-xl border border-dashed border-[#235347] p-8 text-center text-sm text-[#8eb69b]">No unsafe posture has been reported this session.</p>}</section></div>
-}

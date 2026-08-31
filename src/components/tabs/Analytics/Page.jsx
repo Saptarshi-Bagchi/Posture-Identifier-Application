@@ -1,7 +1,0 @@
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { card, SectionTitle } from '../../posturesync/Shared'
-
-export default function AnalyticsPage({ data }) {
-  const readings = data.biometricStream
-  return <div className="space-y-6"><div><p className="text-xs font-bold uppercase tracking-wider text-[#8eb69b]">Analytics</p><h1 className="mt-1 text-2xl font-bold">Current session</h1><p className="mt-2 text-sm text-[#8eb69b]">Only readings received from the connected ESP32 are shown.</p></div><section className={card}><SectionTitle eyebrow="Received telemetry" title="Pitch angle history" />{readings.length ? <div className="h-72"><ResponsiveContainer width="100%" height="100%"><AreaChart data={readings}><CartesianGrid stroke="#235347" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="time" tick={{ fill: '#8eb69b', fontSize: 10 }} axisLine={false} tickLine={false} /><YAxis unit="°" tick={{ fill: '#8eb69b', fontSize: 10 }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ background: '#163832', border: '1px solid #235347' }} /><Area type="monotone" dataKey="neck" name="Sensor 1 pitch" stroke="#8eb69b" fill="#8eb69b33" strokeWidth={2} /><Area type="monotone" dataKey="back" name="Sensor 2 pitch" stroke="#fbbf24" fill="transparent" strokeWidth={2} /></AreaChart></ResponsiveContainer></div> : <p className="rounded-xl border border-dashed border-[#235347] p-8 text-center text-sm text-[#8eb69b]">No telemetry has been received in this session.</p>}</section></div>
-}

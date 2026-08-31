@@ -15,7 +15,9 @@ let isQuitting = false
 let monitoringPaused = false
 let bluetoothSelectionCallback = null
 let mqttBridge = null
-let telemetryStatus = { listening: false, host: '127.0.0.1', port: 1883, error: null }
+let mqttBridgeRequested = true
+let mqttConfig = { host: process.env.MQTT_BIND_HOST || '127.0.0.1', port: Number(process.env.MQTT_PORT || 1883), username: 'device', password: process.env.MQTT_DEVICE_PASSWORD || '', topic: process.env.MQTT_TELEMETRY_TOPIC || 'posture/sensor_data' }
+let telemetryStatus = { listening: false, host: mqttConfig.host, port: mqttConfig.port, topic: mqttConfig.topic, error: null }
 const isDevelopment = process.env.ISPA_DEV === '1'
 
 function broadcastTelemetry(channel, payload) {
@@ -28,10 +30,10 @@ function updateTelemetryStatus(next) {
 }
 
 function startMqttBridge() {
-  if (mqttBridge) return
+  if (mqttBridge || !mqttBridgeRequested) return
   const python = process.env.PYTHON_EXECUTABLE || (process.platform === 'win32' ? 'python' : 'python3')
   const script = path.join(__dirname, '..', '..', 'backend', 'mqtt_bridge.py')
-  mqttBridge = spawn(python, [script], { cwd: path.join(__dirname, '..', '..'), env: process.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  mqttBridge = spawn(python, [script], { cwd: path.join(__dirname, '..', '..'), env: { ...process.env, MQTT_BIND_HOST: mqttConfig.host, MQTT_PORT: String(mqttConfig.port), MQTT_DEVICE_USERNAME: mqttConfig.username, MQTT_DEVICE_PASSWORD: mqttConfig.password, MQTT_TELEMETRY_TOPIC: mqttConfig.topic }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
   let stdout = ''
   mqttBridge.stdout.setEncoding('utf8')
   mqttBridge.stdout.on('data', (chunk) => {
@@ -43,6 +45,7 @@ function startMqttBridge() {
         const event = JSON.parse(line)
         if (event.type === 'telemetry') broadcastTelemetry('telemetry', event)
         if (event.type === 'status') updateTelemetryStatus(event)
+        if (event.type === 'payload_error') updateTelemetryStatus({ payloadError: event.error })
       } catch (_) {}
     }
   })
@@ -50,7 +53,7 @@ function startMqttBridge() {
   mqttBridge.on('error', (error) => updateTelemetryStatus({ listening: false, error: error.message }))
   mqttBridge.on('exit', (code) => {
     mqttBridge = null
-    if (!isQuitting) updateTelemetryStatus({ listening: false, error: `MQTT bridge stopped (${code ?? 'unknown'})` })
+    if (!isQuitting) updateTelemetryStatus({ listening: false, error: mqttBridgeRequested ? `MQTT bridge stopped (${code ?? 'unknown'})` : null })
   })
 }
 
@@ -61,10 +64,24 @@ function sendCloseLidCommand(deviceId) {
 }
 
 function stopMqttBridge() {
-  if (!mqttBridge) return
+  if (!mqttBridge) return Promise.resolve()
   mqttBridge.stdin.end()
   const bridge = mqttBridge
-  setTimeout(() => { if (bridge.exitCode === null) bridge.kill() }, 3000)
+  return new Promise((resolve) => {
+    bridge.once('exit', resolve)
+    setTimeout(() => { if (bridge.exitCode === null) bridge.kill() }, 3000)
+  })
+}
+
+async function configureMqttBridge(nextConfig) {
+  const port = Number(nextConfig?.port)
+  if (!nextConfig?.host || !Number.isInteger(port) || port < 1 || port > 65535 || !nextConfig?.topic) return { ok: false, error: 'Enter a valid host, port, and telemetry topic.' }
+  mqttConfig = { host: String(nextConfig.host).trim(), port, username: String(nextConfig.username || 'device'), password: String(nextConfig.password || ''), topic: String(nextConfig.topic).trim() }
+  telemetryStatus = { listening: false, host: mqttConfig.host, port: mqttConfig.port, topic: mqttConfig.topic, error: null }
+  mqttBridgeRequested = true
+  await stopMqttBridge()
+  startMqttBridge()
+  return { ok: true }
 }
 
 const rendererEntry = () => isDevelopment
@@ -241,6 +258,9 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('get-launch-on-startup', () => app.getLoginItemSettings().openAtLogin)
   ipcMain.handle('get-telemetry-status', () => telemetryStatus)
+  ipcMain.handle('configure-mqtt', (_event, config) => configureMqttBridge(config))
+  ipcMain.handle('connect-mqtt', () => { mqttBridgeRequested = true; startMqttBridge(); return true })
+  ipcMain.handle('disconnect-mqtt', async () => { mqttBridgeRequested = false; await stopMqttBridge(); updateTelemetryStatus({ listening: false, error: null }); return true })
   ipcMain.handle('send-close-lid-command', (_event, deviceId) => sendCloseLidCommand(deviceId))
 
   app.on('activate', openDashboard)

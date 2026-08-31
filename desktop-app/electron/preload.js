@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLaunchOnStartup: (enabled) => ipcRenderer.invoke('set-launch-on-startup', enabled),
   getLaunchOnStartup: () => ipcRenderer.invoke('get-launch-on-startup'),
   getTelemetryStatus: () => ipcRenderer.invoke('get-telemetry-status'),
+  configureMqtt: (config) => ipcRenderer.invoke('configure-mqtt', config),
+  connectMqtt: () => ipcRenderer.invoke('connect-mqtt'),
+  disconnectMqtt: () => ipcRenderer.invoke('disconnect-mqtt'),
   sendCloseLidCommand: (deviceId) => ipcRenderer.invoke('send-close-lid-command', deviceId),
   onMonitoringStateChanged: (callback) => {
     const listener = (_event, paused) => callback(!paused)

@@ -12,10 +12,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLaunchOnStartup: (enabled) => ipcRenderer.invoke('set-launch-on-startup', enabled),
   getLaunchOnStartup: () => ipcRenderer.invoke('get-launch-on-startup'),
   getTelemetryStatus: () => ipcRenderer.invoke('get-telemetry-status'),
-  configureMqtt: (config) => ipcRenderer.invoke('configure-mqtt', config),
-  connectMqtt: () => ipcRenderer.invoke('connect-mqtt'),
-  disconnectMqtt: () => ipcRenderer.invoke('disconnect-mqtt'),
-  sendCloseLidCommand: (deviceId) => ipcRenderer.invoke('send-close-lid-command', deviceId),
+  listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
+  configureSerial: (config) => ipcRenderer.invoke('configure-serial', config),
+  connectSerial: () => ipcRenderer.invoke('connect-serial'),
+  disconnectSerial: () => ipcRenderer.invoke('disconnect-serial'),
   onMonitoringStateChanged: (callback) => {
     const listener = (_event, paused) => callback(!paused)
     ipcRenderer.on('monitoring-state-changed', listener)
@@ -26,14 +26,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('bluetooth-devices', listener)
     return () => ipcRenderer.removeListener('bluetooth-devices', listener)
   },
-  onTelemetry: (callback) => {
-    const listener = (_event, telemetry) => callback(telemetry)
-    ipcRenderer.on('telemetry', listener)
-    return () => ipcRenderer.removeListener('telemetry', listener)
+  onPostureData: (callback) => {
+    const listener = (_event, data) => callback(data)
+    ipcRenderer.on('posture-data', listener)
+    return () => ipcRenderer.removeListener('posture-data', listener)
   },
-  onTelemetryStatus: (callback) => {
+  onSerialStatus: (callback) => {
     const listener = (_event, status) => callback(status)
-    ipcRenderer.on('telemetry-status', listener)
-    return () => ipcRenderer.removeListener('telemetry-status', listener)
+    ipcRenderer.on('serial-status', listener)
+    return () => ipcRenderer.removeListener('serial-status', listener)
   },
 })

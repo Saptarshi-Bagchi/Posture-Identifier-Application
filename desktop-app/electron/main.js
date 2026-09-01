@@ -14,10 +14,10 @@ let tray
 let isQuitting = false
 let monitoringPaused = false
 let bluetoothSelectionCallback = null
-let mqttBridge = null
-let mqttBridgeRequested = true
-let mqttConfig = { host: process.env.MQTT_BIND_HOST || '127.0.0.1', port: Number(process.env.MQTT_PORT || 1883), username: 'device', password: process.env.MQTT_DEVICE_PASSWORD || '', topic: process.env.MQTT_TELEMETRY_TOPIC || 'posture/sensor_data' }
-let telemetryStatus = { state: 'disconnected', listening: false, host: mqttConfig.host, port: mqttConfig.port, topic: mqttConfig.topic, error: null }
+let serialReader = null
+let serialReaderRequested = false
+let serialConfig = { port: process.env.ISPA_SERIAL_PORT || '' }
+let telemetryStatus = { state: 'disconnected', listening: false, port: serialConfig.port, error: null }
 const isDevelopment = process.env.ISPA_DEV === '1'
 
 function broadcastTelemetry(channel, payload) {
@@ -26,62 +26,91 @@ function broadcastTelemetry(channel, payload) {
 
 function updateTelemetryStatus(next) {
   telemetryStatus = { ...telemetryStatus, ...next }
-  broadcastTelemetry('telemetry-status', telemetryStatus)
+  broadcastTelemetry('serial-status', { connected: telemetryStatus.listening === true, ...telemetryStatus })
 }
 
-function startMqttBridge() {
-  if (mqttBridge || !mqttBridgeRequested) return
+function startSerialReader() {
+  if (serialReader || !serialReaderRequested || !serialConfig.port) return
   updateTelemetryStatus({ state: 'connecting', listening: false, error: null, payloadError: null })
   const python = process.env.PYTHON_EXECUTABLE || (process.platform === 'win32' ? 'python' : 'python3')
-  const script = path.join(__dirname, '..', '..', 'backend', 'mqtt_bridge.py')
-  mqttBridge = spawn(python, [script], { cwd: path.join(__dirname, '..', '..'), env: { ...process.env, MQTT_BIND_HOST: mqttConfig.host, MQTT_PORT: String(mqttConfig.port), MQTT_DEVICE_USERNAME: mqttConfig.username, MQTT_DEVICE_PASSWORD: mqttConfig.password, MQTT_TELEMETRY_TOPIC: mqttConfig.topic }, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+  const script = path.join(__dirname, '..', '..', 'backend', 'serial_reader.py')
+  serialReader = spawn(python, [script, '--port', serialConfig.port, '--json'], { cwd: path.join(__dirname, '..', '..'), env: process.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
   let stdout = ''
-  mqttBridge.stdout.setEncoding('utf8')
-  mqttBridge.stdout.on('data', (chunk) => {
+  serialReader.stdout.setEncoding('utf8')
+  serialReader.stdout.on('data', (chunk) => {
     stdout += chunk
     const lines = stdout.split(/\r?\n/)
     stdout = lines.pop()
     for (const line of lines) {
       try {
         const event = JSON.parse(line)
-        if (event.type === 'telemetry') broadcastTelemetry('telemetry', event)
+        if (event.type === 'telemetry') broadcastTelemetry('posture-data', {
+          // Pass through the already-correct named mapping; no downstream reordering.
+          neckX: event.neckX,
+          neckY: event.neckY,
+          lumbarX: event.lumbarX,
+          lumbarY: event.lumbarY,
+          binary: event.binary,
+          received_at: Date.now(),
+        })
         if (event.type === 'status') updateTelemetryStatus({ ...event, state: event.listening ? 'connected' : 'disconnected' })
         if (event.type === 'payload_error') updateTelemetryStatus({ payloadError: event.error })
       } catch (_) {}
     }
   })
-  mqttBridge.stderr.on('data', () => {})
-  mqttBridge.on('error', (error) => updateTelemetryStatus({ state: 'error', listening: false, error: error.message }))
-  mqttBridge.on('exit', (code) => {
-    mqttBridge = null
-    if (!isQuitting) updateTelemetryStatus({ state: mqttBridgeRequested ? 'error' : 'disconnected', listening: false, error: mqttBridgeRequested ? `MQTT bridge stopped (${code ?? 'unknown'})` : null })
+  serialReader.stderr.on('data', () => {})
+  serialReader.on('error', (error) => updateTelemetryStatus({ state: 'error', listening: false, error: error.message }))
+  serialReader.on('exit', (code) => {
+    serialReader = null
+    if (!isQuitting) updateTelemetryStatus({ state: serialReaderRequested ? 'error' : 'disconnected', listening: false, error: serialReaderRequested ? `Serial reader stopped (${code ?? 'unknown'})` : null })
   })
 }
 
-function sendCloseLidCommand(deviceId) {
-  if (!mqttBridge?.stdin?.writable || !deviceId) return false
-  mqttBridge.stdin.write(`${JSON.stringify({ type: 'close_lid', device_id: deviceId })}\n`)
-  return true
-}
-
-function stopMqttBridge() {
-  if (!mqttBridge) return Promise.resolve()
-  mqttBridge.stdin.end()
-  const bridge = mqttBridge
+function stopSerialReader() {
+  if (!serialReader) return Promise.resolve()
+  const reader = serialReader
   return new Promise((resolve) => {
-    bridge.once('exit', resolve)
-    setTimeout(() => { if (bridge.exitCode === null) bridge.kill() }, 3000)
+    let settled = false
+    const cleanup = () => {
+      reader.stdout?.removeAllListeners('data')
+      reader.stderr?.removeAllListeners('data')
+      reader.removeAllListeners('error')
+      if (serialReader === reader) serialReader = null
+    }
+    const finish = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve()
+    }
+    reader.once('exit', finish)
+    if (reader.stdin?.writable) reader.stdin.write('stop\n')
+    setTimeout(() => {
+      if (reader.exitCode === null) reader.kill()
+      setTimeout(finish, 250)
+    }, 3000)
   })
 }
 
-async function configureMqttBridge(nextConfig) {
-  const port = Number(nextConfig?.port)
-  if (!nextConfig?.host || !Number.isInteger(port) || port < 1 || port > 65535 || !nextConfig?.topic) return { ok: false, error: 'Enter a valid host, port, and telemetry topic.' }
-  mqttConfig = { host: String(nextConfig.host).trim(), port, username: String(nextConfig.username || 'device'), password: String(nextConfig.password || ''), topic: String(nextConfig.topic).trim() }
-  telemetryStatus = { state: 'disconnected', listening: false, host: mqttConfig.host, port: mqttConfig.port, topic: mqttConfig.topic, error: null }
-  mqttBridgeRequested = true
-  await stopMqttBridge()
-  startMqttBridge()
+function listSerialPorts() {
+  const python = process.env.PYTHON_EXECUTABLE || (process.platform === 'win32' ? 'python' : 'python3')
+  const script = path.join(__dirname, '..', '..', 'backend', 'serial_reader.py')
+  return new Promise((resolve) => {
+    execFile(python, [script, '--list'], { cwd: path.join(__dirname, '..', '..'), windowsHide: true }, (error, stdout) => {
+      if (error) return resolve({ ports: [], error: 'Unable to enumerate serial ports.' })
+      try { resolve({ ports: JSON.parse(String(stdout)) }) } catch (_) { resolve({ ports: [], error: 'Unable to enumerate serial ports.' }) }
+    })
+  })
+}
+
+async function configureSerialReader(nextConfig) {
+  const port = String(nextConfig?.port || '').trim()
+  if (!port) return { ok: false, error: 'Enter a valid serial port, such as COM5 or /dev/ttyUSB0.' }
+  serialConfig = { port }
+  telemetryStatus = { state: 'disconnected', listening: false, port, error: null }
+  serialReaderRequested = true
+  await stopSerialReader()
+  startSerialReader()
   return { ok: true }
 }
 
@@ -211,7 +240,6 @@ app.whenReady().then(() => {
   createMainWindow()
   createTrayPopup()
   createTray()
-  startMqttBridge()
 
   ipcMain.handle('open-dashboard', openDashboard)
   ipcMain.handle('quit-app', () => { isQuitting = true; app.quit() })
@@ -259,10 +287,10 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('get-launch-on-startup', () => app.getLoginItemSettings().openAtLogin)
   ipcMain.handle('get-telemetry-status', () => telemetryStatus)
-  ipcMain.handle('configure-mqtt', (_event, config) => configureMqttBridge(config))
-  ipcMain.handle('connect-mqtt', () => { mqttBridgeRequested = true; startMqttBridge(); return true })
-  ipcMain.handle('disconnect-mqtt', async () => { mqttBridgeRequested = false; await stopMqttBridge(); updateTelemetryStatus({ state: 'disconnected', listening: false, error: null }); return true })
-  ipcMain.handle('send-close-lid-command', (_event, deviceId) => sendCloseLidCommand(deviceId))
+  ipcMain.handle('list-serial-ports', () => listSerialPorts())
+  ipcMain.handle('configure-serial', (_event, config) => configureSerialReader(config))
+  ipcMain.handle('connect-serial', () => { serialReaderRequested = true; startSerialReader(); return true })
+  ipcMain.handle('disconnect-serial', async () => { serialReaderRequested = false; await stopSerialReader(); updateTelemetryStatus({ state: 'disconnected', listening: false, error: null }); return true })
 
   app.on('activate', openDashboard)
 })
@@ -271,4 +299,4 @@ app.on('window-all-closed', (event) => {
   event.preventDefault()
 })
 
-app.on('before-quit', () => { isQuitting = true; stopMqttBridge() })
+app.on('before-quit', () => { isQuitting = true; stopSerialReader() })

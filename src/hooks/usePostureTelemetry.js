@@ -2,23 +2,33 @@ import { useEffect, useMemo, useState } from 'react'
 import { classifyPosture } from '../config/postureRules'
 
 const axes = ['neck_x', 'neck_y', 'lumbar_x', 'lumbar_y']
+export const MAX_HISTORY_POINTS = 80
 
 export function usePostureTelemetry() {
   const [telemetry, setTelemetry] = useState(null)
-  const [status, setStatus] = useState({ listening: false, host: '127.0.0.1', port: 1883, topic: 'posture/sensor_data', error: null })
+  const [status, setStatus] = useState({ listening: false, port: '', error: null })
   const [history, setHistory] = useState([])
 
   useEffect(() => {
     const api = window.electronAPI
     api?.getTelemetryStatus?.().then(setStatus)
-    const removeTelemetry = api?.onTelemetry?.((next) => {
-      if (!axes.some((axis) => Number.isFinite(next[axis]))) return
-      setTelemetry((previous) => ({ ...previous, ...next }))
+    const removeTelemetry = api?.onPostureData?.((next) => {
+      const values = [next?.neckX, next?.neckY, next?.lumbarX, next?.lumbarY]
+      if (values.some((value) => !Number.isFinite(value))) return
+      const telemetry = { neck_x: next.neckX, neck_y: next.neckY, lumbar_x: next.lumbarX, lumbar_y: next.lumbarY, good_posture: next.binary === 1, received_at: next.received_at || Date.now() }
+      setTelemetry((previous) => ({ ...previous, ...telemetry }))
       const receivedAt = Date.now()
-      const timestamp = next.received_at || next.timestamp || receivedAt
-      setHistory((items) => [...items, { time: new Date(timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }), receivedAt, ...Object.fromEntries(axes.filter((axis) => Number.isFinite(next[axis])).map((axis) => [axis, next[axis]])) }].filter((item) => receivedAt - item.receivedAt <= 60000))
+      const timestamp = telemetry.received_at || receivedAt
+      const point = { time: new Date(timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }), timestamp, receivedAt, ...Object.fromEntries(axes.map((axis) => [axis, telemetry[axis]])) }
+      setHistory((items) => [...items, point].slice(-MAX_HISTORY_POINTS))
     })
-    const removeStatus = api?.onTelemetryStatus?.(setStatus)
+    const removeStatus = api?.onSerialStatus?.((next) => {
+      setStatus(next)
+      if (next?.connected === false || next?.listening === false) {
+        setTelemetry(null)
+        setHistory([])
+      }
+    })
     return () => { removeTelemetry?.(); removeStatus?.() }
   }, [])
 

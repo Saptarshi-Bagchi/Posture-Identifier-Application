@@ -118,6 +118,57 @@
   transition: background-color 300ms ease-in-out;
 }
 
+.live-posture-scroll {
+  scrollbar-width: auto;
+}
+
+.live-metric-label { text-transform: uppercase; }
+
+.live-axis-chart .recharts-line-curve,
+.live-axis-chart .recharts-line .recharts-dot {
+  transform: translate3d(0, 0, 0);
+}
+
+.live-axis-chart.is-sliding .recharts-line-curve,
+.live-axis-chart.is-sliding .recharts-line .recharts-dot {
+  transform: translate3d(var(--slide-offset), 0, 0);
+  transition: transform var(--slide-duration) linear;
+  will-change: transform;
+}
+
+.live-axis-chart.is-sliding-start .recharts-line-curve,
+.live-axis-chart.is-sliding-start .recharts-line .recharts-dot {
+  transform: translate3d(var(--slide-offset), 0, 0);
+  transition: none;
+}
+
+.theme-dark .live-posture-scroll {
+  scrollbar-color: #68737e #242a31;
+}
+
+.theme-dark .live-posture-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.theme-dark .live-posture-scroll::-webkit-scrollbar-track {
+  background: #242a31;
+  border-radius: 999px;
+}
+
+.theme-dark .live-posture-scroll::-webkit-scrollbar-thumb {
+  background: #68737e;
+  border: 2px solid #242a31;
+  border-radius: 999px;
+}
+
+.theme-dark .live-posture-scroll::-webkit-scrollbar-thumb:hover {
+  background: #87929d;
+}
+
+@media (max-width: 639px) {
+  .live-charts-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .live-status-waiting,
 .live-status-good,
 .live-status-bad { display: inline-flex; align-items: center; justify-content: center; }

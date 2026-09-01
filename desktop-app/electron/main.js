@@ -19,6 +19,53 @@ let serialReaderRequested = false
 let serialConfig = { port: process.env.ISPA_SERIAL_PORT || '' }
 let telemetryStatus = { state: 'disconnected', listening: false, port: serialConfig.port, error: null }
 const isDevelopment = process.env.ISPA_DEV === '1'
+const MINUTE_MS = 60 * 1000
+let breakReminderTimer = null
+let breakReminderStartedAt = null
+let breakReminderIndex = 0
+
+function stopBreakReminderSchedule() {
+  if (breakReminderTimer !== null) clearTimeout(breakReminderTimer)
+  breakReminderTimer = null
+  breakReminderStartedAt = null
+  breakReminderIndex = 0
+}
+
+function sendMovementBreakNotification() {
+  try {
+    if (typeof Notification === 'undefined' || !Notification.isSupported()) {
+      console.warn('System notifications are not supported or enabled.')
+      return
+    }
+    new Notification({
+      title: 'Time for a movement break',
+      body: 'Stand up and move around for 8 minutes, then take a 2-minute walk before sitting back down.',
+    }).show()
+  } catch (error) {
+    // Notification permission/blocking must never interrupt serial telemetry.
+    console.warn('Unable to show movement break notification:', error.message)
+  }
+}
+
+function scheduleNextBreakReminder() {
+  if (breakReminderStartedAt === null) return
+  const elapsedMinutes = 20 + (breakReminderIndex * 30)
+  const dueAt = breakReminderStartedAt + (elapsedMinutes * MINUTE_MS)
+  breakReminderTimer = setTimeout(() => {
+    breakReminderTimer = null
+    if (breakReminderStartedAt === null) return
+    sendMovementBreakNotification()
+    breakReminderIndex += 1
+    scheduleNextBreakReminder()
+  }, Math.max(0, dueAt - Date.now()))
+}
+
+function startBreakReminderSchedule() {
+  // A fresh connection always gets a fresh 20/50/80-minute schedule.
+  stopBreakReminderSchedule()
+  breakReminderStartedAt = Date.now()
+  scheduleNextBreakReminder()
+}
 
 function broadcastTelemetry(channel, payload) {
   for (const window of [mainWindow, trayPopup]) if (window && !window.isDestroyed()) window.webContents.send(channel, payload)
@@ -53,15 +100,23 @@ function startSerialReader() {
           binary: event.binary,
           received_at: Date.now(),
         })
-        if (event.type === 'status') updateTelemetryStatus({ ...event, state: event.listening ? 'connected' : 'disconnected' })
+        if (event.type === 'status') {
+          if (event.listening && breakReminderStartedAt === null) startBreakReminderSchedule()
+          if (!event.listening) stopBreakReminderSchedule()
+          updateTelemetryStatus({ ...event, state: event.listening ? 'connected' : 'disconnected' })
+        }
         if (event.type === 'payload_error') updateTelemetryStatus({ payloadError: event.error })
       } catch (_) {}
     }
   })
   serialReader.stderr.on('data', () => {})
-  serialReader.on('error', (error) => updateTelemetryStatus({ state: 'error', listening: false, error: error.message }))
+  serialReader.on('error', (error) => {
+    stopBreakReminderSchedule()
+    updateTelemetryStatus({ state: 'error', listening: false, error: error.message })
+  })
   serialReader.on('exit', (code) => {
     serialReader = null
+    stopBreakReminderSchedule()
     if (!isQuitting) updateTelemetryStatus({ state: serialReaderRequested ? 'error' : 'disconnected', listening: false, error: serialReaderRequested ? `Serial reader stopped (${code ?? 'unknown'})` : null })
   })
 }
@@ -290,7 +345,7 @@ app.whenReady().then(() => {
   ipcMain.handle('list-serial-ports', () => listSerialPorts())
   ipcMain.handle('configure-serial', (_event, config) => configureSerialReader(config))
   ipcMain.handle('connect-serial', () => { serialReaderRequested = true; startSerialReader(); return true })
-  ipcMain.handle('disconnect-serial', async () => { serialReaderRequested = false; await stopSerialReader(); updateTelemetryStatus({ state: 'disconnected', listening: false, error: null }); return true })
+  ipcMain.handle('disconnect-serial', async () => { serialReaderRequested = false; stopBreakReminderSchedule(); await stopSerialReader(); updateTelemetryStatus({ state: 'disconnected', listening: false, error: null }); return true })
 
   app.on('activate', openDashboard)
 })
@@ -299,4 +354,4 @@ app.on('window-all-closed', (event) => {
   event.preventDefault()
 })
 
-app.on('before-quit', () => { isQuitting = true; stopSerialReader() })
+app.on('before-quit', () => { isQuitting = true; stopBreakReminderSchedule(); stopSerialReader() })

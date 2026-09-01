@@ -14,6 +14,7 @@
 
   html {
     min-width: 320px;
+    height: 100%;
     background: var(--app-bg, #0a060e);
   }
 
@@ -25,9 +26,15 @@
   body {
     min-width: 320px;
     min-height: 100vh;
+    height: 100%;
     margin: 0;
     font-family: "Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    height: 100vh;
+    margin: 0;
   }
 
   button,
@@ -77,6 +84,73 @@
 .theme-dark form input { color: #ffffff !important; }
 .theme-dark form input::placeholder { color: rgb(242 237 233 / .62) !important; }
 .theme-dark form button.text-brand-plum { color: #f2ede9 !important; }
+
+.theme-light {
+  --scrollbar-track: #e7ebef;
+  --scrollbar-thumb: #aab6bf;
+}
+
+.theme-dark {
+  --scrollbar-track: #242a31;
+  --scrollbar-thumb: #68737e;
+}
+
+.almanac-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  transition: scrollbar-color 300ms ease-in-out;
+}
+
+.almanac-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.almanac-scroll::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 999px;
+  transition: background-color 300ms ease-in-out;
+}
+
+.almanac-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
+  border-radius: 999px;
+  transition: background-color 300ms ease-in-out;
+}
+
+.live-status-waiting,
+.live-status-good,
+.live-status-bad { display: inline-flex; align-items: center; justify-content: center; }
+.live-status-waiting { background-color: #e5e7eb; color: #374151; }
+.live-status-good { background-color: #dcfce7; color: #166534; }
+.live-status-bad { background-color: #fee2e2; color: #991b1b; }
+.theme-dark .live-status-waiting { background-color: #4b5563; color: #f3f4f6; }
+.theme-dark .live-status-good { background-color: #14532d; color: #bbf7d0; }
+.theme-dark .live-status-bad { background-color: #7f1d1d; color: #fecaca; }
+
+/* Softer dark surfaces and explicit light-mode contrast. */
+.theme-dark {
+  --app-bg: #171a1f;
+  --surface-bg: #242a31;
+  --panel-bg: #303740;
+  --input-bg: #1e242b;
+  --border-color: #3b4652;
+  --text-primary: #f3f5f7;
+  --text-secondary: #d3dae1;
+  background: #171a1f !important;
+  color: #f3f5f7 !important;
+}
+.theme-dark .bg-brand-navy,
+.theme-dark aside,
+.theme-dark header { background-color: #1e242b !important; }
+.theme-dark .bg-brand-surface { background-color: #242a31 !important; border-color: #3b4652 !important; }
+.theme-dark .bg-brand-panel { background-color: #303740 !important; }
+.theme-dark .border-brand-border { border-color: #3b4652 !important; }
+.theme-dark input,
+.theme-dark select,
+.theme-dark textarea { background-color: #1e242b !important; border-color: #3b4652 !important; }
+.theme-dark .recharts-tooltip-wrapper > div { background: #242a31 !important; border-color: #3b4652 !important; }
+
 .theme-light.bg-brand-plum { background-color: #f0f2f5 !important; }
 .theme-light .bg-brand-surface { background-color: #ffffff !important; }
 .theme-light .bg-brand-panel { background-color: #e7ebef !important; }

@@ -12,10 +12,11 @@ export function usePostureTelemetry() {
     const api = window.electronAPI
     api?.getTelemetryStatus?.().then(setStatus)
     const removeTelemetry = api?.onTelemetry?.((next) => {
-      if (!axes.every((axis) => Number.isFinite(next[axis]))) return
-      setTelemetry(next)
+      if (!axes.some((axis) => Number.isFinite(next[axis]))) return
+      setTelemetry((previous) => ({ ...previous, ...next }))
       const receivedAt = Date.now()
-      setHistory((items) => [...items, { time: new Date(next.received_at || next.timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }), receivedAt, ...Object.fromEntries(axes.map((axis) => [axis, next[axis]])) }].filter((item) => receivedAt - item.receivedAt <= 60000))
+      const timestamp = next.received_at || next.timestamp || receivedAt
+      setHistory((items) => [...items, { time: new Date(timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }), receivedAt, ...Object.fromEntries(axes.filter((axis) => Number.isFinite(next[axis])).map((axis) => [axis, next[axis]])) }].filter((item) => receivedAt - item.receivedAt <= 60000))
     })
     const removeStatus = api?.onTelemetryStatus?.(setStatus)
     return () => { removeTelemetry?.(); removeStatus?.() }

@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLaunchOnStartup: (enabled) => ipcRenderer.invoke('set-launch-on-startup', enabled),
   getLaunchOnStartup: () => ipcRenderer.invoke('get-launch-on-startup'),
   getTelemetryStatus: () => ipcRenderer.invoke('get-telemetry-status'),
+  getNotificationLog: () => ipcRenderer.invoke('get-notification-log'),
+  getBreakTimerState: () => ipcRenderer.invoke('get-break-timer-state'),
+  testNotification: () => ipcRenderer.invoke('test-notification'),
   listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
   configureSerial: (config) => ipcRenderer.invoke('configure-serial', config),
   connectSerial: () => ipcRenderer.invoke('connect-serial'),
@@ -35,5 +38,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_event, status) => callback(status)
     ipcRenderer.on('serial-status', listener)
     return () => ipcRenderer.removeListener('serial-status', listener)
+  },
+  onNotificationLogUpdate: (callback) => {
+    const listener = (_event, entry) => callback(entry)
+    ipcRenderer.on('notification-log-update', listener)
+    return () => ipcRenderer.removeListener('notification-log-update', listener)
+  },
+  onNotificationLogInit: (callback) => {
+    const listener = (_event, entries) => callback(entries)
+    ipcRenderer.on('notification-log-init', listener)
+    return () => ipcRenderer.removeListener('notification-log-init', listener)
+  },
+  onBreakTimerState: (callback) => {
+    const listener = (_event, state) => callback(state)
+    ipcRenderer.on('break-timer-state', listener)
+    return () => ipcRenderer.removeListener('break-timer-state', listener)
   },
 })

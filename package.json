@@ -23,7 +23,7 @@
   "license": "ISC",
   "type": "commonjs",
   "build": {
-    "appId": "com.ispa.desktop",
+    "appId": "com.ispa.spinealignment",
     "productName": "ISPA",
     "directories": {
       "output": "release",

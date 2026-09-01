@@ -1,7 +1,10 @@
-const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen } = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, Notification } = require('electron')
 const { execFile, spawn } = require('child_process')
 const path = require('path')
 const fs = require('fs')
+
+// Set the Windows identity before app readiness so native notifications can register reliably.
+if (process.platform === 'win32') app.setAppUserModelId('com.ispa.spinealignment')
 
 app.disableHardwareAcceleration()
 app.commandLine.appendSwitch('disable-gpu')
@@ -20,51 +23,193 @@ let serialConfig = { port: process.env.ISPA_SERIAL_PORT || '' }
 let telemetryStatus = { state: 'disconnected', listening: false, port: serialConfig.port, error: null }
 const isDevelopment = process.env.ISPA_DEV === '1'
 const MINUTE_MS = 60 * 1000
+const MOVEMENT_WINDOW_MS = 90 * 1000
+const MOVEMENT_THRESHOLD_DEGREES = 5
+const MAX_BREAK_REMINDER_RESENDS = 10
+const MAX_NOTIFICATION_LOG = 50
+const TIMER_STATE_INTERVAL_MS = 1000
+const WORK_MODE_MS = 20 * MINUTE_MS
+const WALK_MODE_MS = 10 * MINUTE_MS
 let breakReminderTimer = null
 let breakReminderStartedAt = null
 let breakReminderIndex = 0
+let breakFollowUpTimer = null
+let breakFollowUpResends = 0
+let breakFollowUpWarningShown = false
+let cyclePhase = 'disconnected'
+let cyclePhaseDueAt = null
+let movementReadings = []
+let hasRecentMovement = false
+// Persistent posture state: prevents repeated alerts while bad posture continues.
+let isCurrentlyBad = false
+let notificationLog = []
+let activeNotifications = []
+let timerStateInterval = null
+let breakReminderDueAt = null
+let breakFollowUpDueAt = null
 
-function stopBreakReminderSchedule() {
-  if (breakReminderTimer !== null) clearTimeout(breakReminderTimer)
-  breakReminderTimer = null
-  breakReminderStartedAt = null
-  breakReminderIndex = 0
+function sendNotificationLogEntry(type, title, body) {
+  const entry = { type, title, body, timestamp: Date.now() }
+  notificationLog = [...notificationLog, entry].slice(-MAX_NOTIFICATION_LOG)
+  broadcastTelemetry('notification-log-update', entry)
 }
 
-function sendMovementBreakNotification() {
-  try {
-    if (typeof Notification === 'undefined' || !Notification.isSupported()) {
-      console.warn('System notifications are not supported or enabled.')
-      return
-    }
-    new Notification({
-      title: 'Time for a movement break',
-      body: 'Stand up and move around for 8 minutes, then take a 2-minute walk before sitting back down.',
-    }).show()
-  } catch (error) {
-    // Notification permission/blocking must never interrupt serial telemetry.
-    console.warn('Unable to show movement break notification:', error.message)
+function getBreakTimerState() {
+  const now = Date.now()
+  const phase = cyclePhase === 'walk' ? 'walk-in-progress' : 'waiting-for-break'
+  const seconds = cyclePhaseDueAt === null ? null : Math.max(0, Math.ceil((cyclePhaseDueAt - now) / 1000))
+
+  return {
+    phase,
+    timeUntilNextBreakPrompt: phase === 'waiting-for-break' ? seconds : null,
+    timeUntilNextResendCheck: breakFollowUpDueAt === null ? null : Math.max(0, Math.ceil((breakFollowUpDueAt - now) / 1000)),
+    timeUntilBackToWork: phase === 'walk-in-progress' ? seconds : null,
+    hasRecentMovement,
   }
 }
 
-function scheduleNextBreakReminder() {
+function startTimerStateBroadcast() {
+  if (timerStateInterval !== null) return
+  timerStateInterval = setInterval(() => broadcastTelemetry('break-timer-state', getBreakTimerState()), TIMER_STATE_INTERVAL_MS)
+}
+
+function stopTimerStateBroadcast() {
+  if (timerStateInterval !== null) clearInterval(timerStateInterval)
+  timerStateInterval = null
+}
+
+function sendSystemNotification(type, title, body, { log = true } = {}) {
+  try {
+    if (!Notification.isSupported()) {
+      console.warn(`Notification requested but Electron reports native notifications are unsupported or disabled: ${type}`)
+      return false
+    }
+    console.log(`Notification requested: ${type} — ${title}`)
+    const notification = new Notification({ title, body })
+    activeNotifications.push(notification)
+    notification.once('show', () => console.log(`Notification shown by OS: ${type}`))
+    notification.once('close', () => { activeNotifications = activeNotifications.filter((item) => item !== notification) })
+    notification.show()
+    if (log) sendNotificationLogEntry(type, title, body)
+    return true
+  } catch (error) {
+    console.warn('Unable to show system notification:', error.message)
+    return false
+  }
+}
+
+function stopBreakReminderSchedule() {
+  if (breakReminderTimer !== null) clearTimeout(breakReminderTimer)
+  if (breakFollowUpTimer !== null) clearTimeout(breakFollowUpTimer)
+  breakReminderTimer = null
+  breakFollowUpTimer = null
+  breakReminderDueAt = null
+  breakFollowUpDueAt = null
+  breakReminderStartedAt = null
+  breakReminderIndex = 0
+  breakFollowUpResends = 0
+  breakFollowUpWarningShown = false
+  cyclePhase = 'disconnected'
+  cyclePhaseDueAt = null
+}
+
+function resetMovementTracking() {
+  movementReadings = []
+  hasRecentMovement = false
+}
+
+function resetPostureAlertTracking() {
+  isCurrentlyBad = false
+}
+
+function handleMovementReading(event) {
+  const now = Date.now()
+  const angles = [event.neckX, event.neckY, event.lumbarX, event.lumbarY]
+  movementReadings.push({ at: now, angles })
+  movementReadings = movementReadings.filter((reading) => now - reading.at <= MOVEMENT_WINDOW_MS)
+
+  const ranges = angles.map((_, index) => {
+    const values = movementReadings.map((reading) => reading.angles[index])
+    return Math.max(...values) - Math.min(...values)
+  })
+  hasRecentMovement = ranges.some((range) => range >= MOVEMENT_THRESHOLD_DEGREES)
+
+  return hasRecentMovement
+}
+
+function handlePostureAlert(binary) {
+  const currentBinary = Number(binary)
+
+  if (currentBinary === 0) {
+    // Bad posture: only the first bad reading after good posture can notify.
+    if (!isCurrentlyBad) {
+      sendSystemNotification('bad-posture', 'Posture Alert', 'Your posture has dropped — sit up straight to protect your spine.')
+      isCurrentlyBad = true
+    }
+    // Already bad: intentionally do nothing for subsequent packets.
+    return
+  }
+
+  // Good posture re-arms the next good -> bad transition.
+  isCurrentlyBad = false
+}
+
+function scheduleBreakFollowUp() {
   if (breakReminderStartedAt === null) return
-  const elapsedMinutes = 20 + (breakReminderIndex * 30)
-  const dueAt = breakReminderStartedAt + (elapsedMinutes * MINUTE_MS)
+  breakFollowUpDueAt = Date.now() + MINUTE_MS
+  breakFollowUpTimer = setTimeout(() => {
+    breakFollowUpTimer = null
+    breakFollowUpDueAt = null
+    if (breakReminderStartedAt === null || hasRecentMovement) return
+    if (breakFollowUpResends >= MAX_BREAK_REMINDER_RESENDS && !breakFollowUpWarningShown) {
+      console.warn(`No movement detected after ${MAX_BREAK_REMINDER_RESENDS} movement-break reminders; continuing to check.`)
+      breakFollowUpWarningShown = true
+    }
+    sendMovementBreakNotification('resend-reminder')
+    breakFollowUpResends += 1
+    scheduleBreakFollowUp()
+  }, MINUTE_MS)
+}
+
+function sendMovementBreakNotification(type = 'break-reminder') {
+  sendSystemNotification(type, 'Time for a movement break', 'Stand up and move around for 8 minutes, then take a 2-minute walk before sitting back down.')
+}
+
+function scheduleNextCyclePhase() {
+  if (cyclePhaseDueAt === null) return
   breakReminderTimer = setTimeout(() => {
     breakReminderTimer = null
-    if (breakReminderStartedAt === null) return
-    sendMovementBreakNotification()
-    breakReminderIndex += 1
-    scheduleNextBreakReminder()
-  }, Math.max(0, dueAt - Date.now()))
+    if (cyclePhase === 'work') {
+      breakReminderDueAt = null
+      sendMovementBreakNotification('break-reminder')
+      breakFollowUpResends = 0
+      breakFollowUpWarningShown = false
+      scheduleBreakFollowUp()
+      cyclePhase = 'walk'
+      cyclePhaseDueAt = Date.now() + WALK_MODE_MS
+    } else {
+      if (breakFollowUpTimer !== null) clearTimeout(breakFollowUpTimer)
+      breakFollowUpTimer = null
+      breakFollowUpDueAt = null
+      cyclePhase = 'work'
+      cyclePhaseDueAt = Date.now() + WORK_MODE_MS
+      breakReminderDueAt = cyclePhaseDueAt
+      breakReminderIndex += 1
+    }
+    scheduleNextCyclePhase()
+  }, Math.max(0, cyclePhaseDueAt - Date.now()))
 }
 
 function startBreakReminderSchedule() {
-  // A fresh connection always gets a fresh 20/50/80-minute schedule.
+  // A fresh connection always starts in 20-minute work mode.
   stopBreakReminderSchedule()
-  breakReminderStartedAt = Date.now()
-  scheduleNextBreakReminder()
+  const now = Date.now()
+  breakReminderStartedAt = now
+  cyclePhase = 'work'
+  cyclePhaseDueAt = now + WORK_MODE_MS
+  breakReminderDueAt = cyclePhaseDueAt
+  breakReminderIndex = 0
+  scheduleNextCyclePhase()
 }
 
 function broadcastTelemetry(channel, payload) {
@@ -91,18 +236,27 @@ function startSerialReader() {
     for (const line of lines) {
       try {
         const event = JSON.parse(line)
-        if (event.type === 'telemetry') broadcastTelemetry('posture-data', {
-          // Pass through the already-correct named mapping; no downstream reordering.
-          neckX: event.neckX,
-          neckY: event.neckY,
-          lumbarX: event.lumbarX,
-          lumbarY: event.lumbarY,
-          binary: event.binary,
-          received_at: Date.now(),
-        })
+        if (event.type === 'telemetry') {
+          const hasMovement = handleMovementReading(event)
+          handlePostureAlert(event.binary)
+          broadcastTelemetry('posture-data', {
+            // Pass through the already-correct named mapping; no downstream reordering.
+            neckX: event.neckX,
+            neckY: event.neckY,
+            lumbarX: event.lumbarX,
+            lumbarY: event.lumbarY,
+            binary: event.binary,
+            hasRecentMovement: hasMovement,
+            received_at: Date.now(),
+          })
+        }
         if (event.type === 'status') {
           if (event.listening && breakReminderStartedAt === null) startBreakReminderSchedule()
-          if (!event.listening) stopBreakReminderSchedule()
+          if (!event.listening) {
+            stopBreakReminderSchedule()
+            resetMovementTracking()
+            resetPostureAlertTracking()
+          }
           updateTelemetryStatus({ ...event, state: event.listening ? 'connected' : 'disconnected' })
         }
         if (event.type === 'payload_error') updateTelemetryStatus({ payloadError: event.error })
@@ -112,11 +266,15 @@ function startSerialReader() {
   serialReader.stderr.on('data', () => {})
   serialReader.on('error', (error) => {
     stopBreakReminderSchedule()
+    resetMovementTracking()
+    resetPostureAlertTracking()
     updateTelemetryStatus({ state: 'error', listening: false, error: error.message })
   })
   serialReader.on('exit', (code) => {
     serialReader = null
     stopBreakReminderSchedule()
+    resetMovementTracking()
+    resetPostureAlertTracking()
     if (!isQuitting) updateTelemetryStatus({ state: serialReaderRequested ? 'error' : 'disconnected', listening: false, error: serialReaderRequested ? `Serial reader stopped (${code ?? 'unknown'})` : null })
   })
 }
@@ -342,16 +500,41 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('get-launch-on-startup', () => app.getLoginItemSettings().openAtLogin)
   ipcMain.handle('get-telemetry-status', () => telemetryStatus)
+  ipcMain.handle('get-notification-log', (event) => {
+    event.sender.send('notification-log-init', notificationLog)
+    return notificationLog
+  })
+  ipcMain.handle('get-break-timer-state', (event) => {
+    const state = getBreakTimerState()
+    event.sender.send('break-timer-state', state)
+    return state
+  })
+  ipcMain.handle('test-notification', () => {
+    const shown = sendSystemNotification(
+      'test-notification',
+      'ISPA Test Notification',
+      'Native Windows notifications are working.',
+      { log: false },
+    )
+    return shown
+      ? { ok: true }
+      : { ok: false, error: 'Electron reports that native notifications are unsupported or disabled.' }
+  })
   ipcMain.handle('list-serial-ports', () => listSerialPorts())
   ipcMain.handle('configure-serial', (_event, config) => configureSerialReader(config))
   ipcMain.handle('connect-serial', () => { serialReaderRequested = true; startSerialReader(); return true })
-  ipcMain.handle('disconnect-serial', async () => { serialReaderRequested = false; stopBreakReminderSchedule(); await stopSerialReader(); updateTelemetryStatus({ state: 'disconnected', listening: false, error: null }); return true })
+  ipcMain.handle('disconnect-serial', async () => { serialReaderRequested = false; stopBreakReminderSchedule(); resetMovementTracking(); resetPostureAlertTracking(); await stopSerialReader(); updateTelemetryStatus({ state: 'disconnected', listening: false, error: null }); return true })
 
   app.on('activate', openDashboard)
+  console.log('Notifications supported:', Notification.isSupported())
+  if (!Notification.isSupported()) {
+    console.warn('Native notifications are unavailable. Test a packaged/installed build and check Windows notification policy.')
+  }
+  startTimerStateBroadcast()
 })
 
 app.on('window-all-closed', (event) => {
   event.preventDefault()
 })
 
-app.on('before-quit', () => { isQuitting = true; stopBreakReminderSchedule(); stopSerialReader() })
+app.on('before-quit', () => { isQuitting = true; stopBreakReminderSchedule(); resetMovementTracking(); resetPostureAlertTracking(); stopTimerStateBroadcast(); stopSerialReader() })

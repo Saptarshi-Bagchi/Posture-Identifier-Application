@@ -4,6 +4,9 @@
 
 ISPA is an Electron desktop dashboard for an ESP8266 posture sensor. It reads four live angle readings and a posture flag over USB serial, classifies posture, and displays real-time readings and graphs.
 
+The application uses a direct USB serial connection from the sensor to the
+desktop app.
+
 ## ✨ Features
 
 * 📊 **Live Posture** — posture classification, sensor angles, and rolling charts.
@@ -22,6 +25,8 @@ ESP8266 → USB serial → Python serial reader → Electron IPC → React
 * `desktop-app/electron/preload.js` — secure renderer API.
 * `src/hooks/usePostureTelemetry.js` — telemetry state and history.
 * `src/config/postureRules.js` — posture classification rules.
+
+No broker or cloud service is required to run ISPA.
 
 ## 📋 Requirements
 
@@ -82,7 +87,27 @@ Example:
 12.34,-3.21,0.55,89.90,1
 ```
 
-The first four fields are floats. `binary` is an integer where `1` means good posture and `0` means bad posture.
+The fields are mapped at the serial-reader boundary as follows:
+
+| CSV field | Application field | Meaning |
+| --- | --- | --- |
+| `kalAngle0` / `value0` | `lumbarX` | Lumbar X angle |
+| `kalAngle1` / `value1` | `lumbarY` | Lumbar Y angle |
+| `kalAngle2` / `value2` | `neckX` | Neck X angle |
+| `kalAngle3` / `value3` | `neckY` | Neck Y angle |
+| `binary` / `value4` | `binary` | `1` = good posture, `0` = bad posture |
+
+The four angle fields are floats. The `binary` field is an integer. The
+Python reader converts the raw CSV values to named fields once, then sends
+JSON telemetry to Electron over its local process pipe.
+
+## 🔔 Notifications
+
+While a serial connection is active, ISPA can show native desktop
+notifications for movement breaks and bad posture. The notification history
+and break timer are displayed in the in-app notification panel. The **Test
+Notification** button on **Device Connection** can be used to check native
+notification support without waiting for the break timer.
 
 ## 🧠 Posture Classification
 

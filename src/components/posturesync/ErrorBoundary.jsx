@@ -1,5 +1,7 @@
+// ------------------------- IMPORTS -------------------------
 import { Component } from 'react'
 
+// ------------------------- ERROR BOUNDARY -------------------------
 export default class ErrorBoundary extends Component {
   state = { hasError: false, message: '' }
 

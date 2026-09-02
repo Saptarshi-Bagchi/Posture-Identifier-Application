@@ -1,3 +1,4 @@
+// ------------------------- IMPORTS -------------------------
 import { useEffect, useRef, useState } from 'react'
 import LiveDataPage from './components/tabs/LiveData/Page'
 import PostureAlmanacPage from './components/tabs/PostureAlmanac/Page'
@@ -8,8 +9,10 @@ import { ispaData } from './components/posturesync/data'
 import ErrorBoundary from './components/posturesync/ErrorBoundary'
 import { usePostureTelemetry } from './hooks/usePostureTelemetry'
 
+// ------------------------- PAGE CONFIGURATION -------------------------
 const pages = { 'Live Posture': LiveDataPage, 'Posture Almanac': PostureAlmanacPage, 'Device Connection': DeviceConnectionPage }
 
+// ------------------------- APPLICATION COMPONENT -------------------------
 export default function App() {
   const [activeTab, setActiveTab] = useState('Live Posture')
   const [darkMode, setDarkMode] = useState(true)

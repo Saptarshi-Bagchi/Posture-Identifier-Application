@@ -1,3 +1,4 @@
+// ------------------------- POSTURE ASSETS -------------------------
 import neutralPosture from '../../assets/postures/neutral_posture.jpg'
 import forwardHead from '../../assets/postures/forward_head.jpg'
 import chairSlouching from '../../assets/postures/chair_slouching.jpg'
@@ -7,6 +8,7 @@ import leaningBack from '../../assets/postures/leaning_back.jpg'
 import lateralLean from '../../assets/postures/lateral_lean.jpg'
 import asymmetricalSlouch from '../../assets/postures/asymmetrical_slouch.jpg'
 
+// ------------------------- APPLICATION DATA -------------------------
 export const ispaData = {
   device: { id: 'ESP32', connected: false, bluetooth: 'Waiting for telemetry' },
   telemetry: [], biometricStream: [], alerts: [],

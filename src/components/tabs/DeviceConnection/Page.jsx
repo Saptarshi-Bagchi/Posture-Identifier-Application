@@ -1,8 +1,11 @@
+// ------------------------- IMPORTS -------------------------
 import { useEffect, useState } from 'react'
 import { card, SectionTitle } from '../../posturesync/Shared'
 
+// ------------------------- STORAGE CONFIGURATION -------------------------
 const storageKey = 'ispa-serial-settings'
 
+// ------------------------- DEVICE CONNECTION PAGE -------------------------
 export default function DeviceConnectionPage({ telemetryStatus }) {
   const [port, setPort] = useState(() => JSON.parse(localStorage.getItem(storageKey) || '{}').port || '')
   const [ports, setPorts] = useState([])
@@ -45,7 +48,6 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
   const disconnect = async () => {
     setDisconnecting(true); setActionError('')
     await window.electronAPI?.disconnectSerial?.()
-    // The main process confirms closure through serial-status; this is only a fallback.
     window.setTimeout(() => setDisconnecting(false), 3500)
   }
 

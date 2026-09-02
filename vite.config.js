@@ -1,6 +1,8 @@
+// ------------------------- IMPORTS -------------------------
 const { defineConfig } = require('vite')
 const react = require('@vitejs/plugin-react')
 
+// ------------------------- VITE CONFIGURATION -------------------------
 module.exports = defineConfig({
   root: 'src',
   base: './',

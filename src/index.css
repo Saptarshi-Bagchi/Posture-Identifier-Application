@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------- BASE STYLES ------------------------- */
 @layer base {
   html,
   body,
@@ -179,7 +180,7 @@
 .theme-dark .live-status-good { background-color: #14532d; color: #bbf7d0; }
 .theme-dark .live-status-bad { background-color: #7f1d1d; color: #fecaca; }
 
-/* Softer dark surfaces and explicit light-mode contrast. */
+/* ------------------------- DARK SURFACE OVERRIDES ------------------------- */
 .theme-dark {
   --app-bg: #171a1f;
   --surface-bg: #242a31;
@@ -243,7 +244,7 @@
 .theme-dark [class~="bg-[#051f20]"] [class~="text-[#8eb69b]"],
 .theme-dark [class~="bg-[#163832]"] [class~="text-[#8eb69b]"] { color: #f2ede9 !important; }
 
-/* Root-level theme contract: every page inherits these background and text roles. */
+/* ------------------------- THEME CONTRACT ------------------------- */
 .theme-dark,
 .theme-light {
   --app-bg: #0a060e;
@@ -341,7 +342,7 @@
   }
 }
 
-/* Nocturne dark-mode contract. This block intentionally affects dark mode only. */
+/* ------------------------- FINAL DARK THEME ------------------------- */
 .theme-dark {
   --app-bg: #0a060e;
   --surface-bg: #1a131e;

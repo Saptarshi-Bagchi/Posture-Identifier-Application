@@ -10,9 +10,11 @@ from typing import Callable, Optional, Sequence, TypedDict
 import serial
 from serial.tools import list_ports
 
-
+# ------------------------- SERIAL CONFIGURATION -------------------------
 BAUD_RATE = 115200
 RECONNECT_DELAY_SECONDS = 2.0
+
+# ------------------------- TELEMETRY TYPES -------------------------
 class Reading(TypedDict):
     neckX: float
     neckY: float
@@ -20,20 +22,16 @@ class Reading(TypedDict):
     lumbarY: float
     binary: int
 
-
 ReadingCallback = Callable[[Reading], None]
 StatusCallback = Callable[[str, Optional[str]], None]
 
-
 def parse_reading(line: str) -> Reading:
     """Parse one telemetry line, raising ValueError if it is malformed."""
-    # ESP8266 CSV order: lumbar_x, lumbar_y, neck_x, neck_y, binary (confirmed from live serial data, NOT neck-first as originally assumed).
     fields = [field.strip() for field in line.strip().split(",")]
     if len(fields) != 5:
         raise ValueError(f"expected 5 comma-separated fields, received {len(fields)}")
 
     try:
-        # Map raw indexes to named fields exactly once at the serial boundary.
         lumbar_x, lumbar_y, neck_x, neck_y = (float(value) for value in fields[:4])
         binary = int(fields[4])
     except ValueError as exc:
@@ -44,12 +42,12 @@ def parse_reading(line: str) -> Reading:
 
     return {"neckX": neck_x, "neckY": neck_y, "lumbarX": lumbar_x, "lumbarY": lumbar_y, "binary": binary}
 
-
+# ------------------------- SERIAL PARSING -------------------------
 def available_ports() -> Sequence[str]:
     """Return currently available serial device names."""
     return [port.device for port in list_ports.comports()]
 
-
+# ------------------------- PORT SELECTION -------------------------
 def choose_port() -> str:
     """Show detected ports and ask the user to choose one."""
     ports = list(available_ports())
@@ -73,14 +71,13 @@ def choose_port() -> str:
         return answer
     raise ValueError("A serial port selection is required")
 
-
+# ------------------------- OUTPUT CALLBACKS -------------------------
 def print_reading(reading: Reading) -> None:
     """Default callback: print a human-readable reading."""
     status = "GOOD" if reading["binary"] == 1 else "BAD"
     angles = (reading["neckX"], reading["neckY"], reading["lumbarX"], reading["lumbarY"])
     formatted_angles = ", ".join(f"{angle:.2f}" for angle in angles)
     print(f"angles=[{formatted_angles}]  posture={status} ({reading['binary']})", flush=True)
-
 
 def emit_json_reading(reading: Reading) -> None:
     """Machine-readable callback used by the Electron desktop process."""
@@ -93,7 +90,6 @@ def emit_json_reading(reading: Reading) -> None:
         "binary": reading["binary"],
     }), flush=True)
 
-
 def emit_json_status(state: str, error: Optional[str] = None) -> None:
     """Emit connection state without mixing it into telemetry parsing."""
     event = {"type": "status", "state": state, "listening": state == "connected"}
@@ -101,7 +97,7 @@ def emit_json_status(state: str, error: Optional[str] = None) -> None:
         event["error"] = error
     print(json.dumps(event), flush=True)
 
-
+# ------------------------- SERIAL READER -------------------------
 class SerialPostureReader:
     """Continuously read posture data and reconnect after serial failures."""
 
@@ -166,7 +162,7 @@ class SerialPostureReader:
                 if connection is not None and connection.is_open:
                     connection.close()
 
-
+# ------------------------- COMMAND-LINE INTERFACE -------------------------
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Read ESP8266 posture CSV data over serial.")
     parser.add_argument(
@@ -191,7 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
+# ------------------------- PROGRAM ENTRYPOINT -------------------------
 def main() -> None:
     reader: Optional[SerialPostureReader] = None
     try:
@@ -214,7 +210,6 @@ def main() -> None:
         print("\nStopping serial reader...")
         if reader is not None:
             reader.stop()
-
 
 if __name__ == "__main__":
     main()

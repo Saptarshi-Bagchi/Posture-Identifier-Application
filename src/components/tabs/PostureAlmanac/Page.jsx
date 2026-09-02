@@ -1,9 +1,12 @@
+// ------------------------- IMPORTS -------------------------
 import { useState } from 'react'
 import { Icon } from '../../dashboard/Icon'
 import { card, SectionTitle, statusColors } from '../../posturesync/Shared'
 
+// ------------------------- POSTURE IMAGE -------------------------
 function PostureImage({ image, imageName, name }) { const [failed, setFailed] = useState(false); return failed ? <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-status-warn bg-brand-navy p-3 text-center text-xs text-status-warn">Missing image: {imageName}</div> : <div className="flex h-40 items-center justify-center rounded-xl border border-brand-border bg-brand-navy p-3"><img src={image} alt={`${name} posture`} onError={() => setFailed(true)} className="max-h-36 max-w-full rounded-lg object-contain" /></div> }
 
+// ------------------------- POSTURE ALMANAC PAGE -------------------------
 export default function PostureAlmanacPage({ data }) {
   return <div className="space-y-6"><div className="relative overflow-hidden rounded-3xl border border-brand-border bg-brand-surface p-6"><p className="relative text-xs font-bold uppercase tracking-[0.2em] text-brand-yellow">ISPA reference</p><h1 className="relative mt-2 text-3xl font-bold">Posture Almanac</h1><p className="relative mt-2 max-w-2xl text-sm leading-6 text-slate-400">A visual reference for the alignment states recognized by the ISPA sensor model.</p></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{data.postureAlmanac.map((item) => <article key={item.logic} className={`${card} overflow-hidden`}><div className="flex items-center justify-between"><span className={`text-xs font-bold uppercase ${statusColors[item.tone]}`}>● {item.tone}</span></div><div className="mt-3"><PostureImage image={item.image} imageName={item.imageName} name={item.name} /></div><h2 className="mt-4 text-lg font-bold">{item.name}</h2><p className="mt-2 text-sm leading-6 text-slate-400">{item.description}</p><code className="mt-4 inline-flex rounded-lg border border-brand-border bg-brand-navy px-2.5 py-1.5 text-[11px] text-brand-yellow">{item.logic}</code></article>)}</div><section className={card}><SectionTitle eyebrow="Sensor reference" title="Angle definitions & thresholds" action={<Icon name="book" size={22} />} /><p className="text-sm text-slate-400">The ESP32 sends two pitch and two roll angles. ISPA classifies them using the firmware thresholds.</p></section></div>
 }

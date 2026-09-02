@@ -1,10 +1,13 @@
+// ------------------------- IMPORTS -------------------------
 import { Icon } from '../dashboard/Icon'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 
+// ------------------------- SHARED STYLES -------------------------
 export const card = 'rounded-2xl border border-brand-border bg-brand-surface p-5 shadow-lg shadow-brand-navy/20'
 export const lightCard = 'rounded-2xl border border-[#d8e9e1] bg-white p-5 shadow-sm'
 export const statusColors = { good: 'text-status-good', aware: 'text-status-warn', poor: 'text-orange-400', bad: 'text-status-bad' }
 
+// ------------------------- SHARED COMPONENTS -------------------------
 export function SectionTitle({ eyebrow, title, action }) {
   return <div className="mb-5 flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8eb69b]">{eyebrow}</p><h2 className="mt-1 text-lg font-bold">{title}</h2></div>{action}</div>
 }

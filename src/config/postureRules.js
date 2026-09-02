@@ -1,8 +1,10 @@
+// ------------------------- POSTURE THRESHOLDS -------------------------
 export const postureRules = {
   goodAxisLimit: 10,
   mildAxisLimit: 20,
 }
 
+// ------------------------- POSTURE CLASSIFICATION -------------------------
 export function classifyPosture(reading) {
   const values = [reading.neck_x, reading.neck_y, reading.lumbar_x, reading.lumbar_y]
   const largest = Math.max(...values.map((value) => Math.abs(value)))

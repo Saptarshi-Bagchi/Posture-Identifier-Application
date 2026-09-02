@@ -1,10 +1,13 @@
+// ------------------------- IMPORTS -------------------------
 import { useEffect, useRef, useState } from 'react'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import correctPosture from '../../../assets/postures/neutral_posture.jpg'
 import { card, SectionTitle } from '../../posturesync/Shared'
 
+// ------------------------- CHART CONFIGURATION -------------------------
 const axes = [['neck_x', 'Neck X', '#8eb69b'], ['neck_y', 'Neck Y', '#fbbf24'], ['lumbar_x', 'Lumbar X', '#60a5fa'], ['lumbar_y', 'Lumbar Y', '#f472b6']]
 
+// ------------------------- CHART MOTION -------------------------
 function useSlidingMotion(history) {
   const chartRef = useRef(null)
   const previousTimestamp = useRef(null)
@@ -46,7 +49,7 @@ function AxisChart({ axis, label, color, history }) {
   const domain = latestTimestamp ? [latestTimestamp - span, latestTimestamp] : ['auto', 'auto']
   const { chartRef, motion } = useSlidingMotion(history)
   const motionClass = motion.active ? motion.offset ? 'is-sliding-start' : 'is-sliding' : ''
-  return <div ref={chartRef} className={`live-axis-chart ${motionClass} flex min-h-[240px] min-w-0 flex-col rounded-xl border border-[#235347] bg-[#051f20] p-4`} style={{ '--slide-duration': `${motion.duration}ms`, '--slide-offset': `${motion.offset}px` }}>{/* Recharts animation is disabled; this transform provides the scrolling motion. */}<p className="shrink-0 text-xs font-bold text-[#8eb69b]">{label}</p><div className="mt-3 min-h-0 min-w-0 flex-1">{history.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={history} margin={{ top: 12, right: 28, bottom: 24, left: 34 }}><XAxis dataKey="timestamp" type="number" domain={domain} height={24} tick={{ fontSize: 10 }} tickMargin={8} minTickGap={12} tickFormatter={(value) => new Date(value).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' })} /><YAxis width={42} domain={['auto', 'auto']} tick={{ fontSize: 10 }} tickMargin={8} /><Tooltip labelFormatter={(value) => new Date(value).toLocaleTimeString()} contentStyle={{ background: '#163832', border: '1px solid #235347' }} /><Line type="monotone" dataKey={axis} stroke={color} dot={false} strokeWidth={1.5} isAnimationActive={false} /></LineChart></ResponsiveContainer> : <div className="flex h-full items-center justify-center text-xs text-[#8eb69b]">Waiting for data...</div>}</div></div>
+  return <div ref={chartRef} className={`live-axis-chart ${motionClass} flex min-h-[240px] min-w-0 flex-col rounded-xl border border-[#235347] bg-[#051f20] p-4`} style={{ '--slide-duration': `${motion.duration}ms`, '--slide-offset': `${motion.offset}px` }}><p className="shrink-0 text-xs font-bold text-[#8eb69b]">{label}</p><div className="mt-3 min-h-0 min-w-0 flex-1">{history.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={history} margin={{ top: 12, right: 28, bottom: 24, left: 34 }}><XAxis dataKey="timestamp" type="number" domain={domain} height={24} tick={{ fontSize: 10 }} tickMargin={8} minTickGap={12} tickFormatter={(value) => new Date(value).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' })} /><YAxis width={42} domain={['auto', 'auto']} tick={{ fontSize: 10 }} tickMargin={8} /><Tooltip labelFormatter={(value) => new Date(value).toLocaleTimeString()} contentStyle={{ background: '#163832', border: '1px solid #235347' }} /><Line type="monotone" dataKey={axis} stroke={color} dot={false} strokeWidth={1.5} isAnimationActive={false} /></LineChart></ResponsiveContainer> : <div className="flex h-full items-center justify-center text-xs text-[#8eb69b]">Waiting for data...</div>}</div></div>
 }
 
 export default function LiveDataPage({ telemetry, history, classification, goodPosture, telemetryStatus }) {

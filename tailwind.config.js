@@ -1,3 +1,4 @@
+// ------------------------- TAILWIND CONFIGURATION -------------------------
 module.exports = {
   content: ['./src/index.html', './src/**/*.{js,jsx}'],
   darkMode: 'class',

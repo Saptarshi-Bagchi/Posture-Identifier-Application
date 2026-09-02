@@ -1,9 +1,12 @@
+// ------------------------- IMPORTS -------------------------
 import { useEffect, useMemo, useState } from 'react'
 import { classifyPosture } from '../config/postureRules'
 
+// ------------------------- TELEMETRY CONFIGURATION -------------------------
 const axes = ['neck_x', 'neck_y', 'lumbar_x', 'lumbar_y']
 export const MAX_HISTORY_POINTS = 80
 
+// ------------------------- TELEMETRY HOOK -------------------------
 export function usePostureTelemetry() {
   const [telemetry, setTelemetry] = useState(null)
   const [status, setStatus] = useState({ listening: false, port: '', error: null })

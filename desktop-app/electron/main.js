@@ -1,9 +1,10 @@
+// ------------------------- IMPORTS -------------------------
 const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, Notification } = require('electron')
 const { execFile, spawn } = require('child_process')
 const path = require('path')
 const fs = require('fs')
 
-// Set the Windows identity before app readiness so native notifications can register reliably.
+// ------------------------- APPLICATION SETUP -------------------------
 if (process.platform === 'win32') app.setAppUserModelId('com.ispa.spinealignment')
 
 app.disableHardwareAcceleration()
@@ -11,6 +12,7 @@ app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-gpu-compositing')
 app.commandLine.appendSwitch('in-process-gpu')
 
+// ------------------------- APPLICATION STATE -------------------------
 let mainWindow
 let trayPopup
 let postureAlertWindow = null
@@ -43,7 +45,6 @@ let cyclePhase = 'disconnected'
 let cyclePhaseDueAt = null
 let movementReadings = []
 let hasRecentMovement = false
-// Persistent posture state: prevents repeated alerts while bad posture continues.
 let isCurrentlyBad = false
 let notificationLog = []
 let activeNotifications = []
@@ -51,12 +52,14 @@ let timerStateInterval = null
 let breakReminderDueAt = null
 let breakFollowUpDueAt = null
 
+// ------------------------- NOTIFICATION LOGGING -------------------------
 function sendNotificationLogEntry(type, title, body) {
   const entry = { type, title, body, timestamp: Date.now() }
   notificationLog = [...notificationLog, entry].slice(-MAX_NOTIFICATION_LOG)
   broadcastTelemetry('notification-log-update', entry)
 }
 
+// ------------------------- BREAK TIMER STATE -------------------------
 function getBreakTimerState() {
   const now = Date.now()
   const phase = cyclePhase === 'walk' ? 'walk-in-progress' : 'waiting-for-break'
@@ -81,6 +84,7 @@ function stopTimerStateBroadcast() {
   timerStateInterval = null
 }
 
+// ------------------------- NATIVE NOTIFICATIONS -------------------------
 function sendSystemNotification(type, title, body, { log = true } = {}) {
   try {
     if (!Notification.isSupported()) {
@@ -88,9 +92,6 @@ function sendSystemNotification(type, title, body, { log = true } = {}) {
       return false
     }
     console.log(`Notification requested: ${type} — ${title}`)
-    // Electron exposes timeoutType on Linux, but Windows delegates toast timing
-    // to the OS. Use the platform option where available and always enforce the
-    // two-second cap ourselves below.
     const notificationOptions = { title, body }
     if (process.platform === 'linux') notificationOptions.timeoutType = 'default'
     const notification = new Notification(notificationOptions)
@@ -110,6 +111,7 @@ function sendSystemNotification(type, title, body, { log = true } = {}) {
   }
 }
 
+// ------------------------- BREAK REMINDER SCHEDULE -------------------------
 function stopBreakReminderSchedule() {
   if (breakReminderTimer !== null) clearTimeout(breakReminderTimer)
   if (breakFollowUpTimer !== null) clearTimeout(breakFollowUpTimer)
@@ -125,11 +127,13 @@ function stopBreakReminderSchedule() {
   cyclePhaseDueAt = null
 }
 
+// ------------------------- MOVEMENT TRACKING -------------------------
 function resetMovementTracking() {
   movementReadings = []
   hasRecentMovement = false
 }
 
+// ------------------------- POSTURE ALERT OVERLAY -------------------------
 function resetPostureAlertTracking() {
   isCurrentlyBad = false
   hidePostureAlertOverlay()
@@ -191,8 +195,6 @@ function showPostureAlertOverlay() {
   const overlay = createPostureAlertOverlay()
   if (!overlay || overlay.isDestroyed()) return
 
-  // Keep the scope to the primary display for now. Extending this to every
-  // connected display can be added later without changing posture detection.
   const primaryDisplay = screen.getPrimaryDisplay()
   overlay.setBounds(primaryDisplay.bounds)
   overlay.setAlwaysOnTop(true, 'screen-saver')
@@ -213,6 +215,7 @@ function schedulePostureAlertOverlayClose() {
   }, POSTURE_ALERT_GOOD_DEBOUNCE_MS)
 }
 
+// ------------------------- POSTURE DETECTION -------------------------
 function handleMovementReading(event) {
   const now = Date.now()
   const angles = [event.neckX, event.neckY, event.lumbarX, event.lumbarY]
@@ -232,23 +235,21 @@ function handlePostureAlert(binary) {
   const currentBinary = Number(binary)
 
   if (currentBinary === 0) {
-    // Bad posture: only the first bad reading after good posture can notify.
     if (!isCurrentlyBad) {
       sendSystemNotification('bad-posture', 'Posture Alert', 'Your posture has dropped — sit up straight to protect your spine.')
       showPostureAlertOverlay()
       isCurrentlyBad = true
     }
-    // Already bad: intentionally do nothing for subsequent packets.
     return
   }
 
-  // Good posture re-arms the next good -> bad transition.
   if (isCurrentlyBad) {
     isCurrentlyBad = false
     schedulePostureAlertOverlayClose()
   }
 }
 
+// ------------------------- BREAK NOTIFICATION TIMERS -------------------------
 function scheduleBreakFollowUp() {
   if (breakReminderStartedAt === null) return
   breakFollowUpDueAt = Date.now() + MINUTE_MS
@@ -296,7 +297,6 @@ function scheduleNextCyclePhase() {
 }
 
 function startBreakReminderSchedule() {
-  // A fresh connection always starts in 20-minute work mode.
   stopBreakReminderSchedule()
   const now = Date.now()
   breakReminderStartedAt = now
@@ -307,6 +307,7 @@ function startBreakReminderSchedule() {
   scheduleNextCyclePhase()
 }
 
+// ------------------------- TELEMETRY BROADCASTING -------------------------
 function broadcastTelemetry(channel, payload) {
   for (const window of [mainWindow, trayPopup]) if (window && !window.isDestroyed()) window.webContents.send(channel, payload)
 }
@@ -316,6 +317,7 @@ function updateTelemetryStatus(next) {
   broadcastTelemetry('serial-status', { connected: telemetryStatus.listening === true, ...telemetryStatus })
 }
 
+// ------------------------- SERIAL CONNECTION -------------------------
 function startSerialReader() {
   if (serialReader || !serialReaderRequested || !serialConfig.port) return
   updateTelemetryStatus({ state: 'connecting', listening: false, error: null, payloadError: null })
@@ -335,7 +337,6 @@ function startSerialReader() {
           const hasMovement = handleMovementReading(event)
           handlePostureAlert(event.binary)
           broadcastTelemetry('posture-data', {
-            // Pass through the already-correct named mapping; no downstream reordering.
             neckX: event.neckX,
             neckY: event.neckY,
             lumbarX: event.lumbarX,
@@ -374,6 +375,7 @@ function startSerialReader() {
   })
 }
 
+// ------------------------- SERIAL SHUTDOWN -------------------------
 function stopSerialReader() {
   if (!serialReader) return Promise.resolve()
   const reader = serialReader
@@ -400,6 +402,7 @@ function stopSerialReader() {
   })
 }
 
+// ------------------------- SERIAL CONFIGURATION -------------------------
 function listSerialPorts() {
   const python = process.env.PYTHON_EXECUTABLE || (process.platform === 'win32' ? 'python' : 'python3')
   const script = path.join(__dirname, '..', '..', 'backend', 'serial_reader.py')
@@ -422,6 +425,7 @@ async function configureSerialReader(nextConfig) {
   return { ok: true }
 }
 
+// ------------------------- WINDOW HELPERS -------------------------
 const rendererEntry = () => isDevelopment
   ? 'http://localhost:5173'
   : `file://${path.join(__dirname, '..', '..', 'dist', 'index.html')}`
@@ -431,6 +435,7 @@ function createTrayImage(fileName) {
   return fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty()
 }
 
+// ------------------------- MAIN WINDOW -------------------------
 function createMainWindow() {
   const appIconPath = path.join(__dirname, '..', '..', 'src', 'assets', 'icon.ico')
   mainWindow = new BrowserWindow({
@@ -472,6 +477,7 @@ function createMainWindow() {
   mainWindow.on('closed', () => { mainWindow = null })
 }
 
+// ------------------------- TRAY POPUP -------------------------
 function createTrayPopup() {
   trayPopup = new BrowserWindow({
     width: 340,
@@ -512,6 +518,7 @@ function showTrayPopup() {
   trayPopup.focus()
 }
 
+// ------------------------- TRAY MENU -------------------------
 function openDashboard() {
   if (!mainWindow) createMainWindow()
   mainWindow.show()
@@ -543,6 +550,7 @@ function createTray() {
   tray.on('click', showTrayPopup)
 }
 
+// ------------------------- IPC HANDLERS -------------------------
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   createMainWindow()
@@ -628,6 +636,7 @@ app.whenReady().then(() => {
   startTimerStateBroadcast()
 })
 
+// ------------------------- APPLICATION EVENTS -------------------------
 app.on('window-all-closed', (event) => {
   event.preventDefault()
 })

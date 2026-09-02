@@ -1,18 +1,22 @@
+// ------------------------- IMPORTS -------------------------
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from './Icon'
 
+// ------------------------- NOTIFICATION STYLES -------------------------
 const typeStyles = {
   'bad-posture': { icon: 'alert', color: 'text-red-300', label: 'Posture' },
   'break-reminder': { icon: 'bell', color: 'text-sky-300', label: 'Break' },
   'resend-reminder': { icon: 'history', color: 'text-amber-300', label: 'Reminder' },
 }
 
+// ------------------------- COUNTDOWN FORMATTING -------------------------
 function formatCountdown(seconds) {
   if (seconds === null || seconds === undefined) return '--:--'
   const safeSeconds = Math.max(0, seconds)
   return `${String(Math.floor(safeSeconds / 60)).padStart(2, '0')}:${String(safeSeconds % 60).padStart(2, '0')}`
 }
 
+// ------------------------- NOTIFICATION CENTER -------------------------
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const [unread, setUnread] = useState(0)

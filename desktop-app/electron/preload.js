@@ -1,5 +1,7 @@
+// ------------------------- IMPORTS -------------------------
 const { contextBridge, ipcRenderer } = require('electron')
 
+// ------------------------- EXPOSED ELECTRON API -------------------------
 contextBridge.exposeInMainWorld('electronAPI', {
   openDashboard: () => ipcRenderer.invoke('open-dashboard'),
   quitApp: () => ipcRenderer.invoke('quit-app'),

@@ -1,9 +1,12 @@
+// ------------------------- IMPORTS -------------------------
 import logoSrc from '../../assets/ispa-logo.png'
 import { Icon } from './Icon'
 import NotificationCenter from './NotificationCenter'
 
+// ------------------------- NAVIGATION CONFIGURATION -------------------------
 const navigation = [['Live Posture', 'live'], ['Posture Almanac', 'book'], ['Device Connection', 'wifi']]
 
+// ------------------------- SIDEBAR COMPONENT -------------------------
 export default function Sidebar({ activeTab, onNavigate, serialStatus }) {
   const state = serialStatus?.state || (serialStatus?.error ? 'error' : serialStatus?.listening ? 'connected' : 'disconnected')
   const stateLabel = { connected: 'Connected', connecting: 'Connecting', error: 'Error', disconnected: 'Disconnected' }[state] || 'Disconnected'

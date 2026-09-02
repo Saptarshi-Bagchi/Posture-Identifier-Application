@@ -1,18 +1,3 @@
-"""Read posture telemetry from an ESP8266 over USB serial.
-
-The ESP8266 is expected to emit one CSV line per reading:
-
-    kalAngle0,kalAngle1,kalAngle2,kalAngle3,binary
-
-Example:
-
-    12.34,-3.21,0.55,89.90,1
-
-Install the only dependency with:
-
-    python -m pip install -r backend/requirements.txt
-"""
-
 from __future__ import annotations
 
 import argparse

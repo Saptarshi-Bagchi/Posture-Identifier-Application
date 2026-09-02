@@ -109,6 +109,14 @@ and break timer are displayed in the in-app notification panel. The **Test
 Notification** button on **Device Connection** can be used to check native
 notification support without waiting for the break timer.
 
+When posture changes from good to bad, ISPA also shows a borderless,
+click-through posture-correction overlay on the primary display. It is reused
+and hidden when good posture is sustained for one second, which prevents rapid
+bad/good sensor flicker from flashing the window. The overlay uses the
+`screen-saver` always-on-top level, so it takes priority over the tray popup
+and any break/walk UI overlay if those are visible at the same time. Covering
+secondary displays is currently out of scope.
+
 ## 🧠 Posture Classification
 
 The frontend classifies posture using the four angles:

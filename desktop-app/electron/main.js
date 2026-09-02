@@ -13,6 +13,8 @@ app.commandLine.appendSwitch('in-process-gpu')
 
 let mainWindow
 let trayPopup
+let postureAlertWindow = null
+let postureAlertCloseTimer = null
 let tray
 let isQuitting = false
 let monitoringPaused = false
@@ -28,6 +30,7 @@ const MOVEMENT_THRESHOLD_DEGREES = 5
 const MAX_BREAK_REMINDER_RESENDS = 10
 const MAX_NOTIFICATION_LOG = 50
 const TIMER_STATE_INTERVAL_MS = 1000
+const POSTURE_ALERT_GOOD_DEBOUNCE_MS = 1000
 const WORK_MODE_MS = 20 * MINUTE_MS
 const WALK_MODE_MS = 10 * MINUTE_MS
 let breakReminderTimer = null
@@ -85,10 +88,19 @@ function sendSystemNotification(type, title, body, { log = true } = {}) {
       return false
     }
     console.log(`Notification requested: ${type} — ${title}`)
-    const notification = new Notification({ title, body })
+    // Electron exposes timeoutType on Linux, but Windows delegates toast timing
+    // to the OS. Use the platform option where available and always enforce the
+    // two-second cap ourselves below.
+    const notificationOptions = { title, body }
+    if (process.platform === 'linux') notificationOptions.timeoutType = 'default'
+    const notification = new Notification(notificationOptions)
     activeNotifications.push(notification)
     notification.once('show', () => console.log(`Notification shown by OS: ${type}`))
-    notification.once('close', () => { activeNotifications = activeNotifications.filter((item) => item !== notification) })
+    const closeTimer = setTimeout(() => notification.close(), 2000)
+    notification.once('close', () => {
+      clearTimeout(closeTimer)
+      activeNotifications = activeNotifications.filter((item) => item !== notification)
+    })
     notification.show()
     if (log) sendNotificationLogEntry(type, title, body)
     return true
@@ -120,6 +132,85 @@ function resetMovementTracking() {
 
 function resetPostureAlertTracking() {
   isCurrentlyBad = false
+  hidePostureAlertOverlay()
+}
+
+function createPostureAlertOverlay() {
+  if (postureAlertWindow && !postureAlertWindow.isDestroyed()) return postureAlertWindow
+
+  postureAlertWindow = new BrowserWindow({
+    frame: false,
+    transparent: true,
+    fullscreen: true,
+    fullscreenable: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    closable: false,
+    show: false,
+    skipTaskbar: true,
+    focusable: false,
+    alwaysOnTop: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+
+  postureAlertWindow.setAlwaysOnTop(true, 'screen-saver')
+  postureAlertWindow.setIgnoreMouseEvents(true)
+  postureAlertWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          :root { color-scheme: dark; font-family: Segoe UI, Arial, sans-serif; }
+          html, body { width: 100%; height: 100%; margin: 0; }
+          body { display: grid; place-items: center; background: rgba(92, 8, 18, 0.72); }
+          .alert { max-width: 80vw; padding: 42px 64px; border: 2px solid rgba(255, 190, 190, 0.75); border-radius: 24px; background: rgba(45, 4, 12, 0.94); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5); text-align: center; }
+          .icon { font-size: 58px; line-height: 1; }
+          h1 { margin: 20px 0 10px; color: #fff4f4; font-size: clamp(32px, 5vw, 64px); line-height: 1.1; }
+          p { margin: 0; color: #ffd7d7; font-size: clamp(18px, 2vw, 28px); }
+        </style>
+      </head>
+      <body><main class="alert" role="alert" aria-live="assertive"><div class="icon">⚠</div><h1>Bad posture detected</h1><p>Sit up straight and reset your posture.</p></main></body>
+    </html>
+  `)}`)
+  postureAlertWindow.on('closed', () => { postureAlertWindow = null })
+  return postureAlertWindow
+}
+
+function showPostureAlertOverlay() {
+  if (postureAlertCloseTimer !== null) {
+    clearTimeout(postureAlertCloseTimer)
+    postureAlertCloseTimer = null
+  }
+
+  const overlay = createPostureAlertOverlay()
+  if (!overlay || overlay.isDestroyed()) return
+
+  // Keep the scope to the primary display for now. Extending this to every
+  // connected display can be added later without changing posture detection.
+  const primaryDisplay = screen.getPrimaryDisplay()
+  overlay.setBounds(primaryDisplay.bounds)
+  overlay.setAlwaysOnTop(true, 'screen-saver')
+  overlay.showInactive()
+}
+
+function hidePostureAlertOverlay() {
+  if (postureAlertCloseTimer !== null) clearTimeout(postureAlertCloseTimer)
+  postureAlertCloseTimer = null
+  if (postureAlertWindow && !postureAlertWindow.isDestroyed()) postureAlertWindow.hide()
+}
+
+function schedulePostureAlertOverlayClose() {
+  if (postureAlertCloseTimer !== null) clearTimeout(postureAlertCloseTimer)
+  postureAlertCloseTimer = setTimeout(() => {
+    postureAlertCloseTimer = null
+    hidePostureAlertOverlay()
+  }, POSTURE_ALERT_GOOD_DEBOUNCE_MS)
 }
 
 function handleMovementReading(event) {
@@ -144,6 +235,7 @@ function handlePostureAlert(binary) {
     // Bad posture: only the first bad reading after good posture can notify.
     if (!isCurrentlyBad) {
       sendSystemNotification('bad-posture', 'Posture Alert', 'Your posture has dropped — sit up straight to protect your spine.')
+      showPostureAlertOverlay()
       isCurrentlyBad = true
     }
     // Already bad: intentionally do nothing for subsequent packets.
@@ -151,7 +243,10 @@ function handlePostureAlert(binary) {
   }
 
   // Good posture re-arms the next good -> bad transition.
-  isCurrentlyBad = false
+  if (isCurrentlyBad) {
+    isCurrentlyBad = false
+    schedulePostureAlertOverlayClose()
+  }
 }
 
 function scheduleBreakFollowUp() {

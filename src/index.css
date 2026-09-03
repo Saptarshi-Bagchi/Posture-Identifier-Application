@@ -86,6 +86,10 @@
 .theme-dark form input::placeholder { color: rgb(242 237 233 / .62) !important; }
 .theme-dark form button.text-brand-plum { color: #f2ede9 !important; }
 
+/* Keep the logo outline legible against both application themes. */
+.theme-dark .logo-mark { border-color: #ffffff !important; }
+.theme-light .logo-mark { border-color: #000000 !important; }
+
 .theme-light {
   --scrollbar-track: #e7ebef;
   --scrollbar-thumb: #aab6bf;

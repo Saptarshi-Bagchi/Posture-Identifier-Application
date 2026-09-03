@@ -38,13 +38,13 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "src/assets/icon.ico"
+      "icon": "src/assets/ispa-logo.png"
     },
     "mac": {
-      "icon": "src/assets/icon.png"
+      "icon": "src/assets/ispa-logo.png"
     },
     "linux": {
-      "icon": "src/assets/icon.png"
+      "icon": "src/assets/ispa-logo.png"
     }
   },
   "devDependencies": {

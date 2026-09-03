@@ -483,7 +483,7 @@ function createTrayImage(fileName) {
 
 // ------------------------- MAIN WINDOW -------------------------
 function createMainWindow() {
-  const appIconPath = path.join(__dirname, '..', '..', 'src', 'assets', 'icon.ico')
+  const appIconPath = path.join(__dirname, '..', '..', 'src', 'assets', 'ispa-logo.png')
   mainWindow = new BrowserWindow({
     title: 'ISPA — Incorrect Posture Determination via Spine Alignment',
     width: 1080,

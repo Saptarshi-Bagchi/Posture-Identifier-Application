@@ -1,6 +1,6 @@
 // ------------------------- IMPORTS -------------------------
 import { useEffect, useState } from 'react'
-import { card, SectionTitle } from '../../posturesync/Shared'
+import { card } from '../../posturesync/Shared'
 
 // ------------------------- STORAGE CONFIGURATION -------------------------
 const storageKey = 'ispa-serial-settings'
@@ -62,5 +62,40 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
   const state = disconnecting ? 'Disconnecting' : connecting ? 'Connecting' : telemetryStatus?.error ? 'Error' : connected ? 'Connected' : 'Disconnected'
   const stateClass = state === 'Connected' ? 'text-emerald-300 bg-emerald-400/10' : state === 'Error' ? 'text-red-300 bg-red-400/10' : 'text-amber-300 bg-amber-300/10'
 
-  return <div className="mx-auto max-w-3xl space-y-6"><div><p className="text-xs font-bold uppercase tracking-wider text-[#8eb69b]">Serial</p><h1 className="mt-1 text-2xl font-bold">Device Connection</h1><p className="mt-2 text-sm text-[#8eb69b]">Connect directly to the ESP8266 over USB at 115200 baud.</p></div><section className={card}><div className="flex items-center justify-between"><SectionTitle eyebrow="Connection status" title={state} /><span className={`rounded-full px-3 py-1.5 text-xs font-bold ${stateClass}`}>{state}</span></div>{(actionError || telemetryStatus?.error) && <p className="mb-5 rounded-xl bg-red-400/10 px-3 py-2 text-sm text-red-300">{actionError || telemetryStatus.error}</p>}<label className="block text-xs font-semibold text-slate-400">Serial port<select value={port} onChange={(event) => setPort(event.target.value)} disabled={connecting || disconnecting || testing} className="mt-2 w-full rounded-xl border border-brand-border bg-brand-navy px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-brand-cyan"><option value="">Select an available port</option>{ports.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><div className="mt-5 flex flex-wrap gap-3"><button type="button" onClick={connect} disabled={connecting || disconnecting || testing || connected} className="rounded-xl bg-[#8eb69b] px-5 py-3 text-sm font-bold text-[#051f20] disabled:opacity-50">{connecting ? 'Connecting…' : 'Connect'}</button><button type="button" onClick={disconnect} disabled={disconnecting || testing || !connected} className="rounded-xl border border-[#8eb69b] px-5 py-3 text-sm font-bold disabled:opacity-50">{disconnecting ? 'Disconnecting…' : 'Disconnect'}</button><button type="button" onClick={refreshPorts} disabled={connecting || disconnecting || testing} className="rounded-xl border border-[#8eb69b] px-5 py-3 text-sm font-bold disabled:opacity-50">Refresh ports</button><button type="button" onClick={testNotification} disabled={testing || connecting || disconnecting} className="rounded-xl border border-brand-cyan px-5 py-3 text-sm font-bold text-brand-cyan disabled:opacity-50">{testing ? 'Testing…' : 'Test Notification'}</button></div></section></div>
+  return (
+    <div className="mx-auto flex h-full min-h-0 max-w-3xl flex-col items-center justify-center overflow-y-auto">
+      <div className="w-full">
+        <div className="flex-none">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#8eb69b]">Serial</p>
+          <h1 className="mt-1 text-2xl font-bold">Device Connection</h1>
+        </div>
+
+        <section className={`${card} mt-4 w-full`}>
+          <div className="flex items-start justify-between gap-4">
+            <p className="min-w-0 text-sm text-[#8eb69b]">Connect directly to ESP over USB</p>
+            <div className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+              <span className="text-[#8eb69b]">Connection status</span>
+              <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${stateClass}`}>{state}</span>
+            </div>
+          </div>
+
+          {(actionError || telemetryStatus?.error) && <p className="mb-5 rounded-xl bg-red-400/10 px-3 py-2 text-sm text-red-300">{actionError || telemetryStatus.error}</p>}
+
+          <label className="mt-5 block text-xs font-semibold text-slate-400">
+            Serial port
+            <select value={port} onChange={(event) => setPort(event.target.value)} disabled={connecting || disconnecting || testing} className="mt-2 w-full rounded-xl border border-brand-border bg-brand-navy px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-brand-cyan">
+              <option value="">Select an available port</option>
+              {ports.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+
+          <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
+            <button type="button" onClick={connect} disabled={connecting || disconnecting || testing || connected} className="w-full rounded-xl bg-[#8eb69b] px-5 py-3 text-sm font-bold text-[#051f20] disabled:opacity-50">{connecting ? 'Connecting…' : 'Connect'}</button>
+            <button type="button" onClick={disconnect} disabled={disconnecting || testing || !connected} className="w-full rounded-xl border border-[#8eb69b] px-5 py-3 text-sm font-bold disabled:opacity-50">{disconnecting ? 'Disconnecting…' : 'Disconnect'}</button>
+            <button type="button" onClick={refreshPorts} disabled={connecting || disconnecting || testing} className="w-full rounded-xl border border-[#8eb69b] px-5 py-3 text-sm font-bold disabled:opacity-50">Refresh ports</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  )
 }

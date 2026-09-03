@@ -50,6 +50,37 @@ let notificationLog = []
 let activeNotifications = []
 let timerStateInterval = null
 let breakReminderDueAt = null
+const DEFAULT_APP_SETTINGS = { displayName: '', alertMode: 'hardware' }
+let appSettings = { ...DEFAULT_APP_SETTINGS }
+
+// ------------------------- APP SETTINGS -------------------------
+function getAppSettingsPath() {
+  return path.join(app.getPath('userData'), 'settings.json')
+}
+
+function loadAppSettings() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(getAppSettingsPath(), 'utf8'))
+    return {
+      displayName: typeof saved.displayName === 'string' ? saved.displayName : DEFAULT_APP_SETTINGS.displayName,
+      alertMode: saved.alertMode === 'software' ? 'software' : DEFAULT_APP_SETTINGS.alertMode,
+    }
+  } catch (_) {
+    return { ...DEFAULT_APP_SETTINGS }
+  }
+}
+
+function saveAppSettings(nextSettings) {
+  appSettings = {
+    displayName: String(nextSettings?.displayName || ''),
+    alertMode: nextSettings?.alertMode === 'software' ? 'software' : 'hardware',
+  }
+  fs.mkdirSync(app.getPath('userData'), { recursive: true })
+  fs.writeFileSync(getAppSettingsPath(), JSON.stringify(appSettings, null, 2), 'utf8')
+  if (appSettings.alertMode === 'hardware') hidePostureAlertOverlay()
+  else if (isCurrentlyBad) showPostureAlertOverlay()
+  return appSettings
+}
 let breakFollowUpDueAt = null
 
 // ------------------------- NOTIFICATION LOGGING -------------------------
@@ -144,9 +175,10 @@ function createPostureAlertOverlay() {
 
   postureAlertWindow = new BrowserWindow({
     frame: false,
-    transparent: true,
-    fullscreen: true,
-    fullscreenable: true,
+    transparent: false,
+    backgroundColor: '#000000',
+    fullscreen: false,
+    fullscreenable: false,
     resizable: false,
     movable: false,
     minimizable: false,
@@ -172,8 +204,8 @@ function createPostureAlertOverlay() {
         <style>
           :root { color-scheme: dark; font-family: Segoe UI, Arial, sans-serif; }
           html, body { width: 100%; height: 100%; margin: 0; }
-          body { display: grid; place-items: center; background: rgba(92, 8, 18, 0.72); }
-          .alert { max-width: 80vw; padding: 42px 64px; border: 2px solid rgba(255, 190, 190, 0.75); border-radius: 24px; background: rgba(45, 4, 12, 0.94); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5); text-align: center; }
+          body { display: grid; place-items: center; background: #000; }
+          .alert { max-width: 80vw; padding: 42px 64px; border: 2px solid rgba(255, 190, 190, 0.75); border-radius: 24px; background: #000; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5); text-align: center; }
           .icon { font-size: 58px; line-height: 1; }
           h1 { margin: 20px 0 10px; color: #fff4f4; font-size: clamp(32px, 5vw, 64px); line-height: 1.1; }
           p { margin: 0; color: #ffd7d7; font-size: clamp(18px, 2vw, 28px); }
@@ -195,8 +227,15 @@ function showPostureAlertOverlay() {
   const overlay = createPostureAlertOverlay()
   if (!overlay || overlay.isDestroyed()) return
 
-  const primaryDisplay = screen.getPrimaryDisplay()
-  overlay.setBounds(primaryDisplay.bounds)
+  const { workArea } = screen.getPrimaryDisplay()
+  const width = Math.round(workArea.width * 0.8)
+  const height = Math.round(workArea.height * 0.8)
+  overlay.setBounds({
+    x: workArea.x + Math.round((workArea.width - width) / 2),
+    y: workArea.y + Math.round((workArea.height - height) / 2),
+    width,
+    height,
+  })
   overlay.setAlwaysOnTop(true, 'screen-saver')
   overlay.showInactive()
 }
@@ -236,8 +275,11 @@ function handlePostureAlert(binary) {
 
   if (currentBinary === 0) {
     if (!isCurrentlyBad) {
-      sendSystemNotification('bad-posture', 'Posture Alert', 'Your posture has dropped — sit up straight to protect your spine.')
-      showPostureAlertOverlay()
+      if (appSettings.alertMode === 'software') {
+        showPostureAlertOverlay()
+      } else {
+        sendSystemNotification('bad-posture', 'Posture Alert', 'Your posture has dropped — sit up straight to protect your spine.')
+      }
       isCurrentlyBad = true
     }
     return
@@ -552,6 +594,7 @@ function createTray() {
 
 // ------------------------- IPC HANDLERS -------------------------
 app.whenReady().then(() => {
+  appSettings = loadAppSettings()
   Menu.setApplicationMenu(null)
   createMainWindow()
   createTrayPopup()
@@ -603,6 +646,8 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('get-launch-on-startup', () => app.getLoginItemSettings().openAtLogin)
   ipcMain.handle('get-telemetry-status', () => telemetryStatus)
+  ipcMain.handle('get-app-settings', () => appSettings)
+  ipcMain.handle('save-app-settings', (_event, nextSettings) => saveAppSettings(nextSettings))
   ipcMain.handle('get-notification-log', (event) => {
     event.sender.send('notification-log-init', notificationLog)
     return notificationLog

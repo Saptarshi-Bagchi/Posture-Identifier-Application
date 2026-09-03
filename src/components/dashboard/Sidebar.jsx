@@ -4,7 +4,7 @@ import { Icon } from './Icon'
 import NotificationCenter from './NotificationCenter'
 
 // ------------------------- NAVIGATION CONFIGURATION -------------------------
-const navigation = [['Live Posture', 'live'], ['Posture Almanac', 'book'], ['Device Connection', 'wifi']]
+const navigation = [['Live Posture', 'live'], ['Posture Almanac', 'book'], ['Device Connection', 'wifi'], ['Settings', 'settings']]
 
 // ------------------------- SIDEBAR COMPONENT -------------------------
 export default function Sidebar({ activeTab, onNavigate, serialStatus }) {

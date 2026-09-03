@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLaunchOnStartup: (enabled) => ipcRenderer.invoke('set-launch-on-startup', enabled),
   getLaunchOnStartup: () => ipcRenderer.invoke('get-launch-on-startup'),
   getTelemetryStatus: () => ipcRenderer.invoke('get-telemetry-status'),
+  getAppSettings: () => ipcRenderer.invoke('get-app-settings'),
+  saveAppSettings: (settings) => ipcRenderer.invoke('save-app-settings', settings),
   getNotificationLog: () => ipcRenderer.invoke('get-notification-log'),
   getBreakTimerState: () => ipcRenderer.invoke('get-break-timer-state'),
   testNotification: () => ipcRenderer.invoke('test-notification'),

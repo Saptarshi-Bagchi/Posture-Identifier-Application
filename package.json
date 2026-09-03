@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/Saptarshi-Bagchi/Posture-Identifier-Application.git"
   },
-  "author": "Saptarshi Bagchi",
+  "author": "",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,7 +19,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "build": {
@@ -37,9 +36,16 @@
       "server.js",
       "package.json"
     ],
-    "win": { "target": "nsis", "icon": "src/assets/icon.ico" },
-    "mac": { "icon": "src/assets/icon.png" },
-    "linux": { "icon": "src/assets/icon.png" }
+    "win": {
+      "target": "nsis",
+      "icon": "src/assets/icon.ico"
+    },
+    "mac": {
+      "icon": "src/assets/icon.png"
+    },
+    "linux": {
+      "icon": "src/assets/icon.png"
+    }
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.0",

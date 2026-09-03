@@ -64,7 +64,7 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
 
   return (
     <div className="mx-auto flex h-full min-h-0 max-w-3xl flex-col items-center justify-center overflow-y-auto">
-      <div className="w-full">
+      <div className="relative top-[-5%] w-full">
         <div className="flex-none">
           <p className="text-xs font-bold uppercase tracking-wider text-[#8eb69b]">Serial</p>
           <h1 className="mt-1 text-2xl font-bold">Device Connection</h1>

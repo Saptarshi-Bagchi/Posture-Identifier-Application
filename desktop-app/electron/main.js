@@ -128,12 +128,20 @@ function sendSystemNotification(type, title, body, { log = true } = {}) {
     const notification = new Notification(notificationOptions)
     activeNotifications.push(notification)
     notification.once('show', () => console.log(`Notification shown by OS: ${type}`))
-    const closeTimer = setTimeout(() => notification.close(), 2000)
+    let closeTimer = null
+    const clearCloseTimer = () => {
+      if (closeTimer !== null) {
+        clearTimeout(closeTimer)
+        closeTimer = null
+      }
+    }
+    notification.once('click', clearCloseTimer)
     notification.once('close', () => {
-      clearTimeout(closeTimer)
+      clearCloseTimer()
       activeNotifications = activeNotifications.filter((item) => item !== notification)
     })
     notification.show()
+    closeTimer = setTimeout(() => notification.close(), 2000)
     if (log) sendNotificationLogEntry(type, title, body)
     return true
   } catch (error) {
@@ -187,6 +195,7 @@ function createPostureAlertOverlay() {
     show: false,
     skipTaskbar: true,
     focusable: false,
+    hasShadow: false,
     alwaysOnTop: true,
     webPreferences: {
       contextIsolation: true,
@@ -204,14 +213,16 @@ function createPostureAlertOverlay() {
         <style>
           :root { color-scheme: dark; font-family: Segoe UI, Arial, sans-serif; }
           html, body { width: 100%; height: 100%; margin: 0; }
-          body { display: grid; place-items: center; background: #000; }
-          .alert { max-width: 80vw; padding: 42px 64px; border: 2px solid rgba(255, 190, 190, 0.75); border-radius: 24px; background: #000; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5); text-align: center; }
-          .icon { font-size: 58px; line-height: 1; }
+          body { width: 100%; height: 100%; margin: 0; background: #000; }
+          .content-frame { display: flex; width: 100%; height: 100%; box-sizing: border-box; align-items: center; justify-content: center; transform: translateY(-5%); }
+          .message { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+          .message-copy { text-align: center; }
+          .icon { font-size: 64px; line-height: 1; }
           h1 { margin: 20px 0 10px; color: #fff4f4; font-size: clamp(32px, 5vw, 64px); line-height: 1.1; }
           p { margin: 0; color: #ffd7d7; font-size: clamp(18px, 2vw, 28px); }
         </style>
       </head>
-      <body><main class="alert" role="alert" aria-live="assertive"><div class="icon">⚠</div><h1>Bad posture detected</h1><p>Sit up straight and reset your posture.</p></main></body>
+      <body role="alert" aria-live="assertive"><div class="content-frame"><div class="message"><div class="icon">⚠</div><div class="message-copy"><h1>Bad posture detected</h1><p>Sit up straight and reset your posture.</p></div></div></div></body>
     </html>
   `)}`)
   postureAlertWindow.on('closed', () => { postureAlertWindow = null })
@@ -227,15 +238,8 @@ function showPostureAlertOverlay() {
   const overlay = createPostureAlertOverlay()
   if (!overlay || overlay.isDestroyed()) return
 
-  const { workArea } = screen.getPrimaryDisplay()
-  const width = Math.round(workArea.width * 0.8)
-  const height = Math.round(workArea.height * 0.8)
-  overlay.setBounds({
-    x: workArea.x + Math.round((workArea.width - width) / 2),
-    y: workArea.y + Math.round((workArea.height - height) / 2),
-    width,
-    height,
-  })
+  const { bounds } = screen.getPrimaryDisplay()
+  overlay.setBounds(bounds)
   overlay.setAlwaysOnTop(true, 'screen-saver')
   overlay.showInactive()
 }

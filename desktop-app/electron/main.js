@@ -97,22 +97,23 @@ function sendNotificationLogEntry(type, title, body) {
   broadcastTelemetry('notification-log-update', entry)
 }
 
-function hasOpenAiApiKey() {
-  return Boolean(process.env.OPENAI_API_KEY?.trim())
+function hasGeminiApiKey() {
+  return Boolean(process.env.GEMINI_API_KEY?.trim())
 }
 
-if (!hasOpenAiApiKey()) {
-  console.warn('OpenAI plan generation is disabled. Set OPENAI_API_KEY in the project-root .env file.')
+if (!hasGeminiApiKey()) {
+  console.warn('Gemini plan generation is disabled. Set GEMINI_API_KEY in the project-root .env file.')
 }
 
 function generatePosturePlan(angle, category) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!apiKey) return Promise.reject(new Error('AI plan generation requires an API key — check your .env file.'))
+  const apiKey = process.env.GEMINI_API_KEY?.trim()
   const severity = angle <= 10 ? 'minimal' : angle <= 20 ? 'mild' : angle <= 35 ? 'moderate' : 'severe'
-  const prompt = `Measured neck-to-hip deviation: ${angle}°. Category: ${category}. Severity: ${severity}. Return JSON only: {"days":[{"day":1,"focus":"...","exercises":"Exercise 1; Exercise 2","expectation":"..."}]}. Include exactly 7 days, one or two safe exercises per day, and scale intensity to severity. No diagnosis, pain-provoking movements, or markdown.`
-  const requestBody = JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.4, max_tokens: 600, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'Create concise, safe posture wellness plans.' }, { role: 'user', content: prompt }] })
+  if (!apiKey) return Promise.reject(new Error('Gemini plan generation requires an API key — check your .env file.'))
+  const prompt = `Measured neck-to-hip deviation: ${angle}°. Category: ${category}. Severity: ${severity}. Return exactly 7 days as JSON: {"days":[{"day":1,"focus":"...","exercises":"...","expectation":"..."}]}. Use 1–2 safe exercises/day, scale intensity to severity, no diagnosis or markdown.`
+  const requestBody = JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `You create concise, safe posture wellness plans. ${prompt}` }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 600, responseMimeType: 'application/json' } })
   return new Promise((resolve, reject) => {
-    const request = https.request('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(requestBody), Authorization: `Bearer ${apiKey}` } }, (response) => {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`
+    const request = https.request(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(requestBody) } }, (response) => {
       let body = ''
       response.setEncoding('utf8')
       response.on('data', (chunk) => { body += chunk })
@@ -120,8 +121,7 @@ function generatePosturePlan(angle, category) {
         if (response.statusCode < 200 || response.statusCode >= 300) return reject(new Error(`AI plan request failed (${response.statusCode}).`))
         try {
           const responseBody = JSON.parse(body)
-          if (responseBody.usage) console.info('OpenAI posture plan token usage:', responseBody.usage)
-          const text = responseBody.choices?.[0]?.message?.content || ''
+          const text = responseBody.candidates?.[0]?.content?.parts?.[0]?.text || ''
           const jsonText = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim()
           const days = JSON.parse(jsonText).days
           if (!Array.isArray(days) || days.length !== 7 || days.some((day, index) => day.day !== index + 1 || !day.focus || !day.exercises || !day.expectation)) throw new Error('AI returned an incomplete plan.')
@@ -720,7 +720,7 @@ app.whenReady().then(() => {
       ? { ok: true }
       : { ok: false, error: 'Electron reports that native notifications are unsupported or disabled.' }
   })
-  ipcMain.handle('get-ai-plan-status', () => ({ available: hasOpenAiApiKey() }))
+  ipcMain.handle('get-ai-plan-status', () => ({ available: hasGeminiApiKey() }))
   ipcMain.handle('generate-posture-plan', (_event, analysis) => generatePosturePlan(Number(analysis?.angle), String(analysis?.category || 'unspecified')))
   ipcMain.handle('list-serial-ports', () => listSerialPorts())
   ipcMain.handle('configure-serial', (_event, config) => configureSerialReader(config))

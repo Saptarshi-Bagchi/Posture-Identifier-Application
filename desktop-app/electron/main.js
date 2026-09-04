@@ -2,9 +2,19 @@
 const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, Notification } = require('electron')
 const { execFile, spawn } = require('child_process')
 const path = require('path')
-require('dotenv').config({ path: path.join(__dirname, '../../.env') })
 const fs = require('fs')
 const https = require('https')
+const dotenv = require('dotenv')
+
+// Resolve configuration in both source/dev and packaged launches. Keep secrets in
+// an external .env file rather than bundling them into the renderer or installer.
+const envCandidates = [
+  path.join(__dirname, '../../.env'),
+  path.join(process.cwd(), '.env'),
+  path.join(path.dirname(process.execPath), '.env'),
+]
+const envPath = envCandidates.find((candidate) => fs.existsSync(candidate))
+if (envPath) dotenv.config({ path: envPath, override: true })
 
 // ------------------------- APPLICATION SETUP -------------------------
 if (process.platform === 'win32') app.setAppUserModelId('com.ispa.spinealignment')
@@ -112,7 +122,8 @@ function generatePosturePlan(angle, category) {
   const prompt = `Measured neck-to-hip deviation: ${angle}°. Category: ${category}. Severity: ${severity}. Return exactly 7 days as JSON: {"days":[{"day":1,"focus":"...","exercises":"...","expectation":"..."}]}. Use 1–2 safe exercises/day, scale intensity to severity, no diagnosis or markdown.`
   const requestBody = JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `You create concise, safe posture wellness plans. ${prompt}` }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 600, responseMimeType: 'application/json' } })
   return new Promise((resolve, reject) => {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`
+    // Confirmed for this API key via /v1beta/models: Gemini 3.5 Flash Lite supports generateContent.
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`
     const request = https.request(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(requestBody) } }, (response) => {
       let body = ''
       response.setEncoding('utf8')

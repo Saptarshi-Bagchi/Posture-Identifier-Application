@@ -17,13 +17,12 @@ module.exports = defineConfig({
     assetsInlineLimit: 0,
     rollupOptions: {
       output: {
-        entryFileNames: 'ispa.js',
-        chunkFileNames: 'chunks/[name].js',
+        entryFileNames: 'js/ispa.js',
+        chunkFileNames: 'js/chunks/[name].js',
         assetFileNames: (assetInfo) => {
           const assetName = assetInfo.name || ''
-          if (assetName.endsWith('.css')) return 'ispa.css'
-          if (assetName.includes('ispa-logo')) return 'ispa-logo[extname]'
-          return '[name][extname]'
+          if (assetName.endsWith('.css')) return 'css/ispa.css'
+          return 'assets/[name][extname]'
         },
       },
     },

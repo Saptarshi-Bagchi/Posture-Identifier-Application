@@ -64,7 +64,7 @@ export default function LiveDataPage({ telemetry, history, classification, telem
     button.type = 'button'
     button.dataset.calibrateEntry = 'true'
     button.className = 'mt-4 inline-flex items-center gap-2 rounded-full border border-mauve/50 bg-mauve px-4 py-2 text-sm font-bold text-offwhite transition hover:bg-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve'
-    button.textContent = 'Calibrate'
+    button.textContent = 'Analyze Posture'
     button.addEventListener('click', () => onNavigate('Calibrate'))
     description.insertAdjacentElement('afterend', button)
     return () => button.remove()

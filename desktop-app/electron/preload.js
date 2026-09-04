@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   configureSerial: (config) => ipcRenderer.invoke('configure-serial', config),
   connectSerial: () => ipcRenderer.invoke('connect-serial'),
   disconnectSerial: () => ipcRenderer.invoke('disconnect-serial'),
+  getAiPlanStatus: () => ipcRenderer.invoke('get-ai-plan-status'),
+  generatePosturePlan: (analysis) => ipcRenderer.invoke('generate-posture-plan', analysis),
   onMonitoringStateChanged: (callback) => {
     const listener = (_event, paused) => callback(!paused)
     ipcRenderer.on('monitoring-state-changed', listener)

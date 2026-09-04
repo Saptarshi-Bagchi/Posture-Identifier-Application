@@ -5,13 +5,14 @@ import PostureAlmanacPage from './components/tabs/PostureAlmanac/Page'
 import DeviceConnectionPage from './components/tabs/DeviceConnection/Page'
 import SettingsPage from './components/tabs/Settings/Page'
 import HomePage from './components/tabs/Home/Page'
+import CalibratePage from './components/tabs/Calibrate/Page'
 import Sidebar from './components/dashboard/Sidebar'
 import { ispaData } from './components/posturesync/data'
 import ErrorBoundary from './components/posturesync/ErrorBoundary'
 import { usePostureTelemetry } from './hooks/usePostureTelemetry'
 
 // ------------------------- PAGE CONFIGURATION -------------------------
-const pages = { Home: HomePage, 'Live Posture': LiveDataPage, 'Posture Almanac': PostureAlmanacPage, 'Device Connection': DeviceConnectionPage, Settings: SettingsPage }
+const pages = { Home: HomePage, 'Live Posture': LiveDataPage, 'Device Connection': DeviceConnectionPage, 'Posture Almanac': PostureAlmanacPage, Settings: SettingsPage, Calibrate: CalibratePage }
 
 // ------------------------- APPLICATION COMPONENT -------------------------
 export default function App() {

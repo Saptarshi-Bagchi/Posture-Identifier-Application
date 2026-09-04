@@ -34,7 +34,8 @@ const MAX_NOTIFICATION_LOG = 50
 const TIMER_STATE_INTERVAL_MS = 1000
 const POSTURE_ALERT_GOOD_DEBOUNCE_MS = 1000
 const WORK_MODE_MS = 20 * MINUTE_MS
-const WALK_MODE_MS = 10 * MINUTE_MS
+const STAND_MODE_MS = 8 * MINUTE_MS
+const WALK_MODE_MS = 2 * MINUTE_MS
 let breakReminderTimer = null
 let breakReminderStartedAt = null
 let breakReminderIndex = 0
@@ -97,14 +98,15 @@ function sendNotificationLogEntry(type, title, body) {
 // ------------------------- BREAK TIMER STATE -------------------------
 function getBreakTimerState() {
   const now = Date.now()
-  const phase = cyclePhase === 'walk' ? 'walk-in-progress' : 'waiting-for-break'
+  const phaseLabels = { work: 'sitting', stand: 'standing', walk: 'walking' }
   const seconds = cyclePhaseDueAt === null ? null : Math.max(0, Math.ceil((cyclePhaseDueAt - now) / 1000))
 
   return {
-    phase,
-    timeUntilNextBreakPrompt: phase === 'waiting-for-break' ? seconds : null,
+    phase: cyclePhase === 'disconnected' ? 'disconnected' : phaseLabels[cyclePhase],
+    secondsRemaining: cyclePhase === 'disconnected' ? null : seconds,
+    timeUntilNextBreakPrompt: cyclePhase === 'work' ? seconds : null,
     timeUntilNextResendCheck: breakFollowUpDueAt === null ? null : Math.max(0, Math.ceil((breakFollowUpDueAt - now) / 1000)),
-    timeUntilBackToWork: phase === 'walk-in-progress' ? seconds : null,
+    timeUntilBackToWork: cyclePhase === 'walk' ? seconds : null,
     hasRecentMovement,
   }
 }
@@ -327,21 +329,23 @@ function scheduleNextCyclePhase() {
     breakReminderTimer = null
     if (cyclePhase === 'work') {
       breakReminderDueAt = null
-      sendMovementBreakNotification('break-reminder')
-      breakFollowUpResends = 0
-      breakFollowUpWarningShown = false
-      scheduleBreakFollowUp()
+      sendSystemNotification('sit-stand', 'Time to stand', 'You have been sitting for 20 minutes — stand up for a bit.')
+      cyclePhase = 'stand'
+      cyclePhaseDueAt = Date.now() + STAND_MODE_MS
+    } else if (cyclePhase === 'stand') {
+      sendSystemNotification('stand-walk', 'Time to walk', 'You have been standing for 8 minutes — take a 2-minute walk.')
       cyclePhase = 'walk'
       cyclePhaseDueAt = Date.now() + WALK_MODE_MS
     } else {
-      if (breakFollowUpTimer !== null) clearTimeout(breakFollowUpTimer)
-      breakFollowUpTimer = null
-      breakFollowUpDueAt = null
+      sendSystemNotification('walk-sit', 'Time to sit', 'Your 2-minute walk is complete — settle back in with good posture.')
       cyclePhase = 'work'
       cyclePhaseDueAt = Date.now() + WORK_MODE_MS
       breakReminderDueAt = cyclePhaseDueAt
       breakReminderIndex += 1
     }
+    if (breakFollowUpTimer !== null) clearTimeout(breakFollowUpTimer)
+    breakFollowUpTimer = null
+    breakFollowUpDueAt = null
     scheduleNextCyclePhase()
   }, Math.max(0, cyclePhaseDueAt - Date.now()))
 }
@@ -489,7 +493,7 @@ function createTrayImage(fileName) {
 function createMainWindow() {
   const appIconPath = path.join(__dirname, '..', '..', 'src', 'assets', 'ispa-logo.png')
   mainWindow = new BrowserWindow({
-    title: 'I-SPA — Incorrect Posture Determination via Spine Alignment',
+    title: 'I-SPA Connect — Spine Alignment',
     width: 1080,
     height: 760,
     minWidth: 900,

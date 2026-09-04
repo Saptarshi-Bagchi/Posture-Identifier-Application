@@ -23,9 +23,9 @@ let monitoringPaused = false
 let bluetoothSelectionCallback = null
 let serialReader = null
 let serialReaderRequested = false
-let serialConfig = { port: process.env.ISPA_SERIAL_PORT || '' }
+let serialConfig = { port: process.env.I_SPA_SERIAL_PORT || '' }
 let telemetryStatus = { state: 'disconnected', listening: false, port: serialConfig.port, error: null }
-const isDevelopment = process.env.ISPA_DEV === '1'
+const isDevelopment = process.env.I_SPA_DEV === '1'
 const MINUTE_MS = 60 * 1000
 const MOVEMENT_WINDOW_MS = 90 * 1000
 const MOVEMENT_THRESHOLD_DEGREES = 5
@@ -50,7 +50,7 @@ let notificationLog = []
 let activeNotifications = []
 let timerStateInterval = null
 let breakReminderDueAt = null
-const DEFAULT_APP_SETTINGS = { displayName: '', alertMode: 'hardware' }
+const DEFAULT_APP_SETTINGS = { displayName: '', email: '', dateOfBirth: '', alertMode: 'hardware' }
 let appSettings = { ...DEFAULT_APP_SETTINGS }
 
 // ------------------------- APP SETTINGS -------------------------
@@ -63,6 +63,8 @@ function loadAppSettings() {
     const saved = JSON.parse(fs.readFileSync(getAppSettingsPath(), 'utf8'))
     return {
       displayName: typeof saved.displayName === 'string' ? saved.displayName : DEFAULT_APP_SETTINGS.displayName,
+      email: typeof saved.email === 'string' ? saved.email : DEFAULT_APP_SETTINGS.email,
+      dateOfBirth: typeof saved.dateOfBirth === 'string' ? saved.dateOfBirth : DEFAULT_APP_SETTINGS.dateOfBirth,
       alertMode: saved.alertMode === 'software' ? 'software' : DEFAULT_APP_SETTINGS.alertMode,
     }
   } catch (_) {
@@ -73,6 +75,8 @@ function loadAppSettings() {
 function saveAppSettings(nextSettings) {
   appSettings = {
     displayName: String(nextSettings?.displayName || ''),
+    email: String(nextSettings?.email || ''),
+    dateOfBirth: String(nextSettings?.dateOfBirth || ''),
     alertMode: nextSettings?.alertMode === 'software' ? 'software' : 'hardware',
   }
   fs.mkdirSync(app.getPath('userData'), { recursive: true })
@@ -485,7 +489,7 @@ function createTrayImage(fileName) {
 function createMainWindow() {
   const appIconPath = path.join(__dirname, '..', '..', 'src', 'assets', 'ispa-logo.png')
   mainWindow = new BrowserWindow({
-    title: 'ISPA — Incorrect Posture Determination via Spine Alignment',
+    title: 'I-SPA — Incorrect Posture Determination via Spine Alignment',
     width: 1080,
     height: 760,
     minWidth: 900,
@@ -591,7 +595,7 @@ function buildTrayMenu() {
 
 function createTray() {
   tray = new Tray(createTrayImage('tray-icon-32.png'))
-  tray.setToolTip('ISPA')
+  tray.setToolTip('I-SPA')
   tray.setContextMenu(buildTrayMenu())
   tray.on('click', showTrayPopup)
 }
@@ -664,7 +668,7 @@ app.whenReady().then(() => {
   ipcMain.handle('test-notification', () => {
     const shown = sendSystemNotification(
       'test-notification',
-      'ISPA Test Notification',
+      'I-SPA Test Notification',
       'Native Windows notifications are working.',
       { log: false },
     )

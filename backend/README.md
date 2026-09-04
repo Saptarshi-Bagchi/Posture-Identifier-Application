@@ -1,4 +1,4 @@
-# ISPA serial reader
+# I-SPA serial reader
 
 Install the Python dependency:
 

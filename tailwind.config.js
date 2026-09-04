@@ -5,6 +5,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        background: 'rgb(var(--color-background) / <alpha-value>)',
+        foreground: 'rgb(var(--color-foreground) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        panel: 'rgb(var(--color-panel) / <alpha-value>)',
+        muted: 'rgb(var(--color-muted) / <alpha-value>)',
+        accent: 'rgb(var(--color-accent) / <alpha-value>)',
+        'accent-foreground': 'rgb(var(--color-accent-foreground) / <alpha-value>)',
+        divider: 'rgb(var(--color-divider) / <alpha-value>)',
+        navy: '#1C2D3A',
+        slate: '#455A64',
+        mauve: '#9B5E6D',
+        offwhite: '#F0F2F5',
         'light-navy': '#1C2D3A',
         'light-slate': '#455A64',
         'light-rose': '#9B5E6D',
@@ -40,6 +52,10 @@ module.exports = {
       },
       backgroundImage: {
         'brand-gradient': 'linear-gradient(135deg, #9B5E6D 0%, #9B5E6D 100%)',
+      },
+      fontFamily: {
+        display: ['Baloo 2', 'ui-sans-serif', 'system-ui'],
+        sans: ['Quicksand', 'Inter', 'Segoe UI', 'ui-sans-serif', 'system-ui'],
       },
     },
   },

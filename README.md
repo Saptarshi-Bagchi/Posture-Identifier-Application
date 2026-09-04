@@ -1,8 +1,8 @@
-# 🧘 ISPA
+# 🧘 I-SPA
 
 **Incorrect Posture Determination via Spine Alignment**
 
-ISPA is an Electron desktop dashboard for an ESP8266 posture sensor. It reads four live angle readings and a posture flag over USB serial, classifies posture, and displays real-time readings and graphs.
+I-SPA is an Electron desktop dashboard for an ESP8266 posture sensor. It reads four live angle readings and a posture flag over USB serial, classifies posture, and displays real-time readings and graphs.
 
 The application uses a direct USB serial connection from the sensor to the
 desktop app.
@@ -12,7 +12,7 @@ desktop app.
 * 📊 **Live Posture** — posture classification, sensor angles, and rolling charts.
 * 📖 **Posture Almanac** — posture reference images and descriptions.
 * 🔌 **Serial Connection** — connect directly to an ESP8266 by COM port.
-* 🖥️ **System Tray** — open, pause, or quit ISPA.
+* 🖥️ **System Tray** — open, pause, or quit I-SPA.
 
 ## 🏗️ Architecture
 
@@ -26,7 +26,7 @@ ESP8266 → USB serial → Python serial reader → Electron IPC → React
 * `src/hooks/usePostureTelemetry.js` — telemetry state and history.
 * `src/config/postureRules.js` — posture classification rules.
 
-No broker or cloud service is required to run ISPA.
+No broker or cloud service is required to run I-SPA.
 
 ## 📋 Requirements
 
@@ -103,13 +103,13 @@ JSON telemetry to Electron over its local process pipe.
 
 ## 🔔 Notifications
 
-While a serial connection is active, ISPA can show native desktop
+While a serial connection is active, I-SPA can show native desktop
 notifications for movement breaks and bad posture. The notification history
 and break timer are displayed in the in-app notification panel. The **Test
 Notification** button on **Device Connection** can be used to check native
 notification support without waiting for the break timer.
 
-When posture changes from good to bad, ISPA also shows a borderless,
+When posture changes from good to bad, I-SPA also shows a borderless,
 click-through posture-correction overlay on the primary display. It is reused
 and hidden when good posture is sustained for one second, which prevents rapid
 bad/good sensor flicker from flashing the window. The overlay uses the

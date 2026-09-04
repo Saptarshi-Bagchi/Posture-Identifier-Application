@@ -1,7 +1,7 @@
 {
-  "name": "ispa",
+  "name": "i-spa",
   "version": "1.0.0",
-  "description": "ISPA — Incorrect Posture Determination via Spine Alignment.",
+  "description": "I-SPA — Incorrect Posture Determination via Spine Alignment.",
   "main": "desktop-app/electron/main.js",
   "homepage": "https://github.com/Saptarshi-Bagchi/Posture-Identifier-Application",
   "repository": {
@@ -13,7 +13,7 @@
     "dev": "vite",
     "build": "vite build",
     "electron": "electron desktop-app/electron/main.js",
-    "dev:desktop": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && cross-env ISPA_DEV=1 npm run electron\"",
+    "dev:desktop": "concurrently -k \"npm run dev\" \"wait-on http://localhost:5173 && cross-env I_SPA_DEV=1 npm run electron\"",
     "setup:backend": "python -m pip install -r backend/requirements.txt",
     "start": "npm run build && npm run electron",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -23,7 +23,7 @@
   "type": "commonjs",
   "build": {
     "appId": "com.ispa.spinealignment",
-    "productName": "ISPA",
+    "productName": "I-SPA",
     "directories": {
       "output": "release",
       "buildResources": "src/assets"

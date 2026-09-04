@@ -63,18 +63,18 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
   const stateClass = state === 'Connected' ? 'text-emerald-300 bg-emerald-400/10' : state === 'Error' ? 'text-red-300 bg-red-400/10' : 'text-amber-300 bg-amber-300/10'
 
   return (
-    <div className="mx-auto flex h-full min-h-0 max-w-3xl flex-col items-center justify-center overflow-y-auto">
-      <div className="relative top-[-5%] w-full">
-        <div className="flex-none">
-          <p className="text-xs font-bold uppercase tracking-wider text-[#8eb69b]">Serial</p>
-          <h1 className="mt-1 text-2xl font-bold">Device Connection</h1>
+    <div className="tab-scroll mx-auto flex h-full min-h-0 max-w-2xl flex-col items-center justify-start overflow-y-auto">
+      <div className="relative w-full">
+        <div className="connection-heading flex-none">
+          <p className="text-xs font-bold uppercase tracking-wider text-mauve">Serial Device Connection</p>
+          <h1 className="mt-1 font-display text-2xl font-bold text-navy">Connect your device</h1>
         </div>
 
-        <section className={`${card} mt-4 w-full`}>
+        <section className={`${card} connection-card mt-4 w-full`}>
           <div className="flex items-start justify-between gap-4">
-            <p className="min-w-0 text-sm text-[#8eb69b]">Connect directly to ESP over USB</p>
+            <p className="min-w-0 text-sm text-slate">Connect directly to ESP over USB</p>
             <div className="flex shrink-0 items-center gap-2 text-sm font-semibold">
-              <span className="text-[#8eb69b]">Connection status</span>
+              <span className="text-slate">Connection status</span>
               <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${stateClass}`}>{state}</span>
             </div>
           </div>
@@ -83,16 +83,16 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
 
           <label className="mt-5 block text-xs font-semibold text-slate-400">
             Serial port
-            <select value={port} onChange={(event) => setPort(event.target.value)} disabled={connecting || disconnecting || testing} className="mt-2 w-full rounded-xl border border-brand-border bg-brand-navy px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-brand-cyan">
+            <select value={port} onChange={(event) => setPort(event.target.value)} disabled={connecting || disconnecting || testing} className="mt-2 w-full rounded-2xl border border-slate/30 bg-offwhite px-3 py-2.5 text-sm text-navy outline-none focus:border-mauve">
               <option value="">Select an available port</option>
               {ports.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
 
           <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
-            <button type="button" onClick={connect} disabled={connecting || disconnecting || testing || connected} className="w-full rounded-xl bg-[#8eb69b] px-5 py-3 text-sm font-bold text-[#051f20] disabled:opacity-50">{connecting ? 'Connecting…' : 'Connect'}</button>
-            <button type="button" onClick={disconnect} disabled={disconnecting || testing || !connected} className="w-full rounded-xl border border-[#8eb69b] px-5 py-3 text-sm font-bold disabled:opacity-50">{disconnecting ? 'Disconnecting…' : 'Disconnect'}</button>
-            <button type="button" onClick={refreshPorts} disabled={connecting || disconnecting || testing} className="w-full rounded-xl border border-[#8eb69b] px-5 py-3 text-sm font-bold disabled:opacity-50">Refresh ports</button>
+            <button type="button" onClick={connect} disabled={connecting || disconnecting || testing || connected} className="w-full bg-mauve px-5 py-3 text-sm font-bold text-offwhite transition hover:bg-navy disabled:opacity-50">{connecting ? 'Connecting…' : 'Connect'}</button>
+            <button type="button" onClick={disconnect} disabled={disconnecting || testing || !connected} className="w-full border border-mauve px-5 py-3 text-sm font-bold text-mauve transition hover:bg-mauve hover:text-offwhite disabled:opacity-50">{disconnecting ? 'Disconnecting…' : 'Disconnect'}</button>
+            <button type="button" onClick={refreshPorts} disabled={connecting || disconnecting || testing} className="w-full border border-slate/50 px-5 py-3 text-sm font-bold text-slate transition hover:bg-slate hover:text-offwhite disabled:opacity-50">Refresh ports</button>
           </div>
         </section>
       </div>

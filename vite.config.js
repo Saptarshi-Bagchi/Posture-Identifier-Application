@@ -22,8 +22,8 @@ module.exports = defineConfig({
         assetFileNames: (assetInfo) => {
           const assetName = assetInfo.name || ''
           if (assetName.endsWith('.css')) return 'ispa.css'
-          if (assetName.includes('ispa-logo')) return 'assets/ispa-logo[extname]'
-          return 'assets/[name][extname]'
+          if (assetName.includes('ispa-logo')) return 'ispa-logo[extname]'
+          return '[name][extname]'
         },
       },
     },

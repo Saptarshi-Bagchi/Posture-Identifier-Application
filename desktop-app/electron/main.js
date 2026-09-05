@@ -3,18 +3,30 @@ const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, screen, Notificati
 const { execFile, spawn } = require('child_process')
 const path = require('path')
 const fs = require('fs')
-const https = require('https')
 const dotenv = require('dotenv')
+const { generatePosturePlan, getGeminiApiKey } = require('../../backend/gemini-plan')
 
 // Resolve configuration in both source/dev and packaged launches. Keep secrets in
 // an external .env file rather than bundling them into the renderer or installer.
 const envCandidates = [
-  path.join(__dirname, '../../.env'),
-  path.join(process.cwd(), '.env'),
-  path.join(path.dirname(process.execPath), '.env'),
+  // Development: main.js is two levels below the project root.
+  path.resolve(__dirname, '../../.env'),
+  // Packaged builds: allow .env beside the executable and in Electron's app path.
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(path.dirname(process.execPath), '.env'),
+  path.resolve(__dirname, '../../../.env'),
 ]
-const envPath = envCandidates.find((candidate) => fs.existsSync(candidate))
-if (envPath) dotenv.config({ path: envPath, override: true })
+
+function loadEnvironment() {
+  // Load every existing candidate so launching Electron from another working
+  // directory still picks up the project-root configuration. The last value
+  // wins, which also makes the executable-local .env an intentional override.
+  for (const candidate of [...new Set(envCandidates)]) {
+    if (fs.existsSync(candidate)) dotenv.config({ path: candidate, override: true })
+  }
+}
+
+loadEnvironment()
 
 // ------------------------- APPLICATION SETUP -------------------------
 if (process.platform === 'win32') app.setAppUserModelId('com.ispa.spinealignment')
@@ -108,42 +120,11 @@ function sendNotificationLogEntry(type, title, body) {
 }
 
 function hasGeminiApiKey() {
-  return Boolean(process.env.GEMINI_API_KEY?.trim())
+  return Boolean(getGeminiApiKey())
 }
 
 if (!hasGeminiApiKey()) {
   console.warn('Gemini plan generation is disabled. Set GEMINI_API_KEY in the project-root .env file.')
-}
-
-function generatePosturePlan(angle, category) {
-  const apiKey = process.env.GEMINI_API_KEY?.trim()
-  const severity = angle <= 10 ? 'minimal' : angle <= 20 ? 'mild' : angle <= 35 ? 'moderate' : 'severe'
-  if (!apiKey) return Promise.reject(new Error('Gemini plan generation requires an API key — check your .env file.'))
-  const prompt = `Measured neck-to-hip deviation: ${angle}°. Category: ${category}. Severity: ${severity}. Return exactly 7 days as JSON: {"days":[{"day":1,"focus":"...","exercises":"...","expectation":"..."}]}. Use 1–2 safe exercises/day, scale intensity to severity, no diagnosis or markdown.`
-  const requestBody = JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `You create concise, safe posture wellness plans. ${prompt}` }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 600, responseMimeType: 'application/json' } })
-  return new Promise((resolve, reject) => {
-    // Confirmed for this API key via /v1beta/models: Gemini 3.5 Flash Lite supports generateContent.
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`
-    const request = https.request(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(requestBody) } }, (response) => {
-      let body = ''
-      response.setEncoding('utf8')
-      response.on('data', (chunk) => { body += chunk })
-      response.on('end', () => {
-        if (response.statusCode < 200 || response.statusCode >= 300) return reject(new Error(`AI plan request failed (${response.statusCode}).`))
-        try {
-          const responseBody = JSON.parse(body)
-          const text = responseBody.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          const jsonText = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim()
-          const days = JSON.parse(jsonText).days
-          if (!Array.isArray(days) || days.length !== 7 || days.some((day, index) => day.day !== index + 1 || !day.focus || !day.exercises || !day.expectation)) throw new Error('AI returned an incomplete plan.')
-          resolve(days.map((day) => [day.focus, day.exercises, day.expectation]))
-        } catch (_) { reject(new Error('AI returned an unreadable improvement plan.')) }
-      })
-    })
-    request.on('error', () => reject(new Error('Unable to reach the AI plan service. Check your connection and try again.')))
-    request.write(requestBody)
-    request.end()
-  })
 }
 
 // ------------------------- BREAK TIMER STATE -------------------------

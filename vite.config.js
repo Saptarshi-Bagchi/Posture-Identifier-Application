@@ -7,7 +7,7 @@ function posturePlanApi() {
   return {
     name: 'posture-plan-api',
     configureServer(server) {
-      server.middlewares.use('/api/posture-plan', (request, response, next) => {
+      server.middlewares.use('/api/generate-posture-plan', (request, response, next) => {
         if (request.method !== 'POST') return next()
         let raw = ''
         request.on('data', (chunk) => { raw += chunk })

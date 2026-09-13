@@ -1,12 +1,15 @@
 // ------------------------- IMPORTS -------------------------
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { card } from '../../posturesync/Shared'
+import { getDeviceConnection, UNSUPPORTED_SERIAL_MESSAGE } from '../../../hooks/usePostureTelemetry'
 
 // ------------------------- STORAGE CONFIGURATION -------------------------
 const storageKey = 'ispa-serial-settings'
 
 // ------------------------- DEVICE CONNECTION PAGE -------------------------
 export default function DeviceConnectionPage({ telemetryStatus }) {
+  const connection = useMemo(() => getDeviceConnection(), [])
+  const browserMode = connection.browser
   const [port, setPort] = useState(() => JSON.parse(localStorage.getItem(storageKey) || '{}').port || '')
   const [ports, setPorts] = useState([])
   const [connecting, setConnecting] = useState(false)
@@ -15,7 +18,7 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
   const [actionError, setActionError] = useState('')
 
   const refreshPorts = async () => {
-    const result = await window.electronAPI?.listSerialPorts?.()
+    const result = await connection.listPorts()
     if (result?.error) setActionError(result.error)
     setPorts(result?.ports || [])
     return result?.ports || []
@@ -34,20 +37,25 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
 
   const connect = async () => {
     setConnecting(true); setActionError('')
-    const available = await refreshPorts()
-    if (!port || !available.includes(port)) {
-      setActionError('Select an available serial port before connecting.')
-      setConnecting(false)
-      return
+    let result
+    if (browserMode) {
+      result = await connection.connect()
+    } else {
+      const available = await refreshPorts()
+      if (!port || !available.includes(port)) {
+        setActionError('Select an available serial port before connecting.')
+        setConnecting(false)
+        return
+      }
+      result = await connection.connect(port)
     }
-    const result = await window.electronAPI?.configureSerial?.({ port })
     if (!result?.ok) setActionError(result?.error || 'Unable to start the serial reader.')
     setConnecting(false)
   }
 
   const disconnect = async () => {
     setDisconnecting(true); setActionError('')
-    await window.electronAPI?.disconnectSerial?.()
+    await connection.disconnect()
     window.setTimeout(() => setDisconnecting(false), 3500)
   }
 
@@ -79,20 +87,20 @@ export default function DeviceConnectionPage({ telemetryStatus }) {
             </div>
           </div>
 
-          {(actionError || telemetryStatus?.error) && <p className="mb-5 rounded-xl bg-red-400/10 px-3 py-2 text-sm text-red-300">{actionError || telemetryStatus.error}</p>}
+          {(actionError || telemetryStatus?.error || (!connection.supported && UNSUPPORTED_SERIAL_MESSAGE)) && <p className="mb-5 rounded-xl bg-red-400/10 px-3 py-2 text-sm text-red-300">{actionError || telemetryStatus?.error || UNSUPPORTED_SERIAL_MESSAGE}</p>}
 
           <label className="mt-5 block text-xs font-semibold text-slate-400">
             Serial port
-            <select value={port} onChange={(event) => setPort(event.target.value)} disabled={connecting || disconnecting || testing} className="mt-2 w-full rounded-2xl border border-slate/30 bg-offwhite px-3 py-2.5 text-sm text-navy outline-none focus:border-mauve">
-              <option value="">Select an available port</option>
+            <select value={port} onChange={(event) => setPort(event.target.value)} disabled={browserMode || connecting || disconnecting || testing} className="mt-2 w-full rounded-2xl border border-slate/30 bg-offwhite px-3 py-2.5 text-sm text-navy outline-none focus:border-mauve disabled:cursor-not-allowed disabled:opacity-70">
+              <option value="">{browserMode ? 'Web Serial uses Browser Picker for Port Selection' : 'Select an available port'}</option>
               {ports.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
 
           <div className="mt-5 grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
-            <button type="button" onClick={connect} disabled={connecting || disconnecting || testing || connected} className="w-full bg-mauve px-5 py-3 text-sm font-bold text-offwhite transition hover:bg-navy disabled:opacity-50">{connecting ? 'Connecting…' : 'Connect'}</button>
+            <button type="button" onClick={connect} disabled={!connection.supported || connecting || disconnecting || testing || connected} className="w-full bg-mauve px-5 py-3 text-sm font-bold text-offwhite transition hover:bg-navy disabled:opacity-50">{connecting ? 'Connecting…' : browserMode ? 'Choose & Connect' : 'Connect'}</button>
             <button type="button" onClick={disconnect} disabled={disconnecting || testing || !connected} className="w-full border border-mauve px-5 py-3 text-sm font-bold text-mauve transition hover:bg-mauve hover:text-offwhite disabled:opacity-50">{disconnecting ? 'Disconnecting…' : 'Disconnect'}</button>
-            <button type="button" onClick={refreshPorts} disabled={connecting || disconnecting || testing} className="w-full border border-slate/50 px-5 py-3 text-sm font-bold text-slate transition hover:bg-slate hover:text-offwhite disabled:opacity-50">Refresh ports</button>
+            <button type="button" onClick={refreshPorts} disabled={!connection.supported || connecting || disconnecting || testing} className="w-full border border-slate/50 px-5 py-3 text-sm font-bold text-slate transition hover:bg-slate hover:text-offwhite disabled:opacity-50">{browserMode ? 'Refresh device' : 'Refresh ports'}</button>
           </div>
         </section>
       </div>

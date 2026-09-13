@@ -2,6 +2,7 @@ const fs = require('fs')
 const https = require('https')
 const path = require('path')
 const dotenv = require('dotenv')
+const { POSTURE_PLAN_SYSTEM_PROMPT } = require('./posture-system-prompt')
 
 const envCandidates = [
   path.resolve(__dirname, '../.env'),
@@ -26,19 +27,8 @@ function generatePosturePlan(angle, category) {
   const severity = numericAngle <= 10 ? 'minimal' : numericAngle <= 20 ? 'mild' : numericAngle <= 35 ? 'moderate' : 'severe'
   if (!apiKey) return Promise.reject(new Error('Gemini plan generation requires an API key — check your .env file.'))
 
-  const systemPrompt = [
-    'You create concise, safe, non-diagnostic 7-day spine-positioning correction plans.',
-    'The only subject is the spine angle.',
-    'Gradually improve the spine angle toward exactly 90 degrees across the 7 days.',
-    'Do not mention exercises, stretches, workouts, repetitions, sets, equipment, activities, symptoms, diagnoses, or any topic other than spine positioning and its angle.',
-    'For each day, give only a spine-positioning correction, a target spine angle moving gradually toward 90 degrees,',
-    'and a short explanation limited to the spine angle.',
-    'Return exactly 7 days as JSON with this shape:',
-    '{"days":[{"day":1,"focus":"...","postureCorrection":"...","targetAngle":"...","angleGuidance":"...","expectation":"..."}]}.',
-    'Return JSON only, with no markdown.',
-  ].join(' ')
   const requestBody = JSON.stringify({
-    systemInstruction: { parts: [{ text: systemPrompt }] },
+    systemInstruction: { parts: [{ text: POSTURE_PLAN_SYSTEM_PROMPT }] },
     contents: [{ role: 'user', parts: [{ text: `Measured shoulder-to-hip deviation: ${numericAngle} degrees. Detected posture category: ${category}. Severity: ${severity}.` }] }],
     generationConfig: { temperature: 0.3, maxOutputTokens: 900, responseMimeType: 'application/json' },
   })

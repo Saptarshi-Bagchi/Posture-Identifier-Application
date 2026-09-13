@@ -16,7 +16,7 @@ const server = http.createServer((request, response) => {
     response.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' })
     return response.end()
   }
-  if (request.method === 'POST' && request.url === '/api/posture-plan') {
+  if (request.method === 'POST' && request.url === '/api/generate-posture-plan') {
     let raw = ''
     request.on('data', (chunk) => { raw += chunk; if (raw.length > 10000) request.destroy() })
     request.on('end', async () => {

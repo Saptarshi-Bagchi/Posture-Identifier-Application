@@ -1,6 +1,7 @@
 // ------------------------- IMPORTS -------------------------
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from './Icon'
+import { isElectron, requestNotificationPermission, subscribeToWebNotifications } from '../../lib/notifications'
 
 // ------------------------- NOTIFICATION STYLES -------------------------
 const typeStyles = {
@@ -25,6 +26,7 @@ export default function NotificationCenter() {
   const [unread, setUnread] = useState(0)
   const [entries, setEntries] = useState([])
   const [timerState, setTimerState] = useState({ phase: 'disconnected', secondsRemaining: null })
+  const [webPermission, setWebPermission] = useState(() => typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
   const openRef = useRef(false)
 
   useEffect(() => {
@@ -34,15 +36,19 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     const api = window.electronAPI
-    api?.getNotificationLog?.().then((snapshot) => setEntries(snapshot || []))
-    api?.getBreakTimerState?.().then(setTimerState)
+    api?.getNotificationLog?.()?.then((snapshot) => setEntries(snapshot || []))
+    api?.getBreakTimerState?.()?.then(setTimerState)
     const removeInit = api?.onNotificationLogInit?.((snapshot) => setEntries(snapshot || []))
     const removeUpdate = api?.onNotificationLogUpdate?.((entry) => {
       setEntries((current) => [...current, entry].slice(-50))
       if (!openRef.current) setUnread((count) => count + 1)
     })
     const removeTimer = api?.onBreakTimerState?.(setTimerState)
-    return () => { removeInit?.(); removeUpdate?.(); removeTimer?.() }
+    const removeWeb = subscribeToWebNotifications((entry) => {
+      setEntries((current) => [...current, entry].slice(-50))
+      if (!openRef.current) setUnread((count) => count + 1)
+    })
+    return () => { removeInit?.(); removeUpdate?.(); removeTimer?.(); removeWeb?.() }
   }, [])
 
   const toggle = () => setOpen((current) => !current)
@@ -59,6 +65,7 @@ export default function NotificationCenter() {
         {unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-mauve ring-2 ring-navy" />}
       </button>
       {open && <section className="absolute right-0 top-full z-50 mt-3 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-brand-border bg-brand-surface p-4 shadow-2xl" role="dialog" aria-label="Notification history">
+        {!isElectron() && webPermission !== 'granted' && webPermission !== 'unsupported' && <button type="button" onClick={async () => setWebPermission(await requestNotificationPermission() ? 'granted' : 'denied')} className="mb-4 min-h-11 w-full rounded-xl bg-mauve px-3 py-2 text-sm font-bold text-offwhite hover:bg-navy">{webPermission === 'denied' ? 'Notifications blocked in browser' : 'Enable browser notifications'}</button>}
         {countdown && <div className="mb-4 rounded-xl bg-brand-panel p-3"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-secondary">{countdown[0]}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatCountdown(countdown[1])}</p></div>}
         {entries.length === 0 ? <p className="py-6 text-center text-sm text-brand-secondary">No notifications yet</p> : <div className="max-h-72 space-y-3 overflow-y-auto">{[...entries].reverse().map((entry, index) => { const style = typeStyle(entry); return <article key={`${entry.timestamp}-${index}`} className="flex gap-3 border-b border-brand-border pb-3 last:border-0"><span className={style.color}><Icon name={style.icon} size={17} /></span><div className="min-w-0"><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold">{entry.title}</p><time className="shrink-0 text-[10px] text-brand-secondary">{new Date(entry.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time></div><p className="mt-1 text-xs leading-4 text-brand-secondary">{entry.body}</p></div></article> })}</div>}
       </section>}

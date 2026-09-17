@@ -1,6 +1,7 @@
 // ------------------------- IMPORTS -------------------------
 import { useEffect, useMemo, useState } from 'react'
 import { classifySensorPosture } from '../lib/postureDetection'
+import { isElectron, sendNotification } from '../lib/notifications'
 
 // ------------------------- DEVICE CONNECTION -------------------------
 const BAUD_RATE = 115200
@@ -109,6 +110,27 @@ export function usePostureTelemetry() {
   const [telemetry, setTelemetry] = useState(null)
   const [status, setStatus] = useState({ listening: false, port: '', error: null })
   const [history, setHistory] = useState([])
+
+  useEffect(() => {
+    if (isElectron() || !status.connected) return undefined
+    const phases = [
+      [20 * 60 * 1000, 'sit-stand', 'Time to stand', 'You have been sitting for 20 minutes — stand up for a bit.'],
+      [8 * 60 * 1000, 'stand-walk', 'Time to walk', 'You have been standing for 8 minutes — take a 2-minute walk.'],
+      [2 * 60 * 1000, 'walk-sit', 'Time to sit', 'Your 2-minute walk is complete — settle back in with good posture.'],
+    ]
+    let phase = 0
+    let timer
+    const schedule = () => {
+      const [delay, type, title, body] = phases[phase]
+      timer = window.setTimeout(async () => {
+        await sendNotification(title, body, type)
+        phase = (phase + 1) % phases.length
+        schedule()
+      }, delay)
+    }
+    schedule()
+    return () => window.clearTimeout(timer)
+  }, [status.connected])
 
   useEffect(() => {
     const connection = getDeviceConnection()

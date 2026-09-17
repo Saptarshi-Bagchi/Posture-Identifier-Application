@@ -23,5 +23,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('ispa-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
-  return <div className={`flex h-screen min-h-0 flex-col overflow-hidden transition-colors duration-300 ease-in-out ${darkMode ? 'theme-dark' : 'theme-light'}`}><Sidebar activeTab={activeTab} onNavigate={setActiveTab} serialStatus={status} darkMode={darkMode} onThemeChange={setDarkMode} /><main className="content-scale flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background px-4 pb-4 pt-4 transition-colors duration-300 ease-in-out sm:px-6 lg:px-10 lg:pb-6"><div className="tab-viewport mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col"><div className="min-h-0 flex-1 overflow-hidden"><ErrorBoundary key={activeTab}><Page data={ispaData} telemetry={telemetry} history={history} classification={classification} goodPosture={goodPosture} telemetryStatus={status} darkMode={darkMode} onNavigate={setActiveTab} /></ErrorBoundary></div></div></main></div>
+  useEffect(() => {
+    const themedTabs = new Set(['Home', 'Live Posture', 'Posture Almanac', 'Settings'])
+    const tabContent = document.querySelector('.tab-scroll')
+    tabContent?.classList.toggle('themed-scroll', themedTabs.has(activeTab))
+    tabContent?.classList.toggle('live-tab-content', activeTab === 'Live Posture')
+  }, [activeTab])
+  return <div className={`flex h-screen min-h-0 flex-col overflow-hidden transition-colors duration-300 ease-in-out ${darkMode ? 'theme-dark' : 'theme-light'}`}><Sidebar activeTab={activeTab} onNavigate={setActiveTab} serialStatus={status} darkMode={darkMode} onThemeChange={setDarkMode} /><main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background px-3 pb-3 pt-3 transition-colors duration-300 ease-in-out sm:px-6 sm:pb-4 sm:pt-4 lg:px-10 lg:pb-6"><div className="tab-viewport mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col"><div className="min-h-0 flex-1 overflow-hidden"><ErrorBoundary key={activeTab}><Page data={ispaData} telemetry={telemetry} history={history} classification={classification} goodPosture={goodPosture} telemetryStatus={status} darkMode={darkMode} onNavigate={setActiveTab} /></ErrorBoundary></div></div></main></div>
 }

@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getNotificationLog: () => ipcRenderer.invoke('get-notification-log'),
   getBreakTimerState: () => ipcRenderer.invoke('get-break-timer-state'),
   testNotification: () => ipcRenderer.invoke('test-notification'),
+  sendNotification: (notification) => ipcRenderer.invoke('send-notification', notification),
   listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
   configureSerial: (config) => ipcRenderer.invoke('configure-serial', config),
   connectSerial: () => ipcRenderer.invoke('connect-serial'),

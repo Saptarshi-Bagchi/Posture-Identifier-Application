@@ -712,6 +712,10 @@ app.whenReady().then(() => {
       ? { ok: true }
       : { ok: false, error: 'Electron reports that native notifications are unsupported or disabled.' }
   })
+  ipcMain.handle('send-notification', (_event, notification = {}) => {
+    const shown = sendSystemNotification(notification.type || 'break-reminder', notification.title || 'I-SPA', notification.body || '')
+    return shown ? { ok: true, native: true } : { ok: false, error: 'Electron reports that native notifications are unsupported or disabled.' }
+  })
   ipcMain.handle('get-ai-plan-status', () => ({ available: hasGeminiApiKey() }))
   ipcMain.handle('generate-posture-plan', (_event, analysis) => generatePosturePlan(Number(analysis?.angle), String(analysis?.category || 'unspecified')))
   ipcMain.handle('list-serial-ports', () => listSerialPorts())

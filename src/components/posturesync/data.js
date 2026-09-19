@@ -31,6 +31,7 @@ export const postureImageMap = {
 // Translate the detector's labels to the stable Almanac posture IDs.
 export function getPostureImagesForClassification(classification) {
   if (!classification) return postureImageMap.POSTURE_NEUTRAL_GOOD
+  if (classification.category && postureImageMap[classification.category]) return postureImageMap[classification.category]
   const label = classification.label || ''
   if (classification.tone === 'good' || label === 'Good Posture') return postureImageMap.POSTURE_NEUTRAL_GOOD
   if (label.includes('Forward Head')) return postureImageMap.POSTURE_FORWARD_HEAD_TEXT_NECK

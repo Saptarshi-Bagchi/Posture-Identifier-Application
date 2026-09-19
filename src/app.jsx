@@ -24,7 +24,7 @@ export default function App() {
     localStorage.setItem('ispa-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
   useEffect(() => {
-    const themedTabs = new Set(['Home', 'Live Posture', 'Posture Almanac', 'Settings'])
+    const themedTabs = new Set(['Home', 'Live Posture', 'Posture Almanac', 'Settings', 'Calibrate'])
     const tabContent = document.querySelector('.tab-scroll')
     tabContent?.classList.toggle('themed-scroll', themedTabs.has(activeTab))
     tabContent?.classList.toggle('live-tab-content', activeTab === 'Live Posture')

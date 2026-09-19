@@ -8,8 +8,8 @@ module.exports = async function handler(request, response) {
 
   try {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : (request.body || {})
-    const days = await generatePosturePlan(body.angle, body.category)
-    return response.status(200).json({ days })
+    const plan = await generatePosturePlan(body.angle, body.category, body.startDate)
+    return response.status(200).json(plan)
   } catch (error) {
     return response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to generate the improvement plan.' })
   }

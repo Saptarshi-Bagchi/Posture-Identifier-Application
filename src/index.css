@@ -17,6 +17,10 @@
   --chart-secondary: rgb(69 90 100);
   --tooltip-bg: rgb(255 255 255);
   --text-primary: rgb(28 45 58);
+  --calendar-cell-bg: 255 255 255;
+  --calendar-sunday-bg: 230 186 182;
+  --calendar-cell-text: 28 45 58;
+  --calendar-sunday-text: 103 42 42;
 }
 
 * { box-sizing: border-box; }
@@ -59,6 +63,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   --chart-secondary: rgb(214 223 227);
   --tooltip-bg: rgb(38 59 73);
   --text-primary: rgb(240 242 245);
+  --calendar-cell-bg: 51 75 89;
+  --calendar-sunday-bg: 145 78 76;
+  --calendar-cell-text: 240 242 245;
+  --calendar-sunday-text: 255 255 255;
 }
 
 .theme-light, .theme-dark { min-height: 100%; background: rgb(var(--color-background)) !important; color: rgb(var(--color-foreground)) !important; }
@@ -75,17 +83,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .hero-stats > div { padding: clamp(.5rem, 1.2vh, .625rem) clamp(.75rem, 1.25vw, 1rem); }
 @media (min-width: 768px) { .hero-headline { line-height: .92; } }
 @media (min-width: 768px) {
+  :root,
+  .theme-light,
+  .theme-dark {
+    --primary-section-height: clamp(30rem, calc(100vh - var(--nav-height) - 2rem), 52rem);
+  }
+
   .home-page .home-hero {
-    min-height: clamp(30rem, calc(100vh - var(--nav-height) - 2rem), 52rem);
-    max-height: calc(100vh - var(--nav-height) - 2rem);
+    min-height: var(--primary-section-height);
+    max-height: var(--primary-section-height);
     padding: clamp(1.5rem, 3vw, 4rem);
     overflow: hidden;
   }
   .home-page .hero-visual { min-height: clamp(14rem, 40vw, 26rem); }
   .home-page .hero-headline { font-size: clamp(2.5rem, 5vw, 5.5rem); line-height: .92; }
   .live-tracking-page .live-tracking-hero {
-    min-height: clamp(30rem, calc(100vh - var(--nav-height) - 2rem), 52rem);
-    max-height: calc(100vh - var(--nav-height) - 2rem);
+    min-height: var(--primary-section-height);
+    max-height: var(--primary-section-height);
     padding: clamp(1.5rem, 3vw, 4rem);
     overflow: hidden;
   }
@@ -98,6 +112,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .themed-scroll::-webkit-scrollbar-thumb { background: #9ca3af; border: .12rem solid transparent; background-clip: padding-box; border-radius: 999px; }
 .theme-dark .themed-scroll::-webkit-scrollbar-track { background: rgb(39 54 47 / .8); }
 .theme-dark .themed-scroll::-webkit-scrollbar-thumb { background: #46564e; }
+.calendar-day { background-color: rgb(var(--calendar-cell-bg)); color: rgb(var(--calendar-cell-text)); }
+.calendar-sunday { background-color: rgb(var(--calendar-sunday-bg)); color: rgb(var(--calendar-sunday-text)); }
+.calendar-popup, .calendar-popup-sunday { background-color: #fff; }
+.theme-dark .calendar-popup, .theme-dark .calendar-popup-sunday { background-color: #fff; color: #1c2d3a; }
+.theme-dark .calendar-day .text-foreground, .theme-dark .calendar-popup .text-foreground { color: #1c2d3a !important; }
+.theme-dark .calendar-day .text-muted, .theme-dark .calendar-popup .text-muted { color: #46564e !important; }
+.theme-dark .calendar-day .text-foreground, .theme-dark .calendar-day .text-muted { color: rgb(var(--calendar-cell-text)) !important; }
+.calendar-sunday .text-foreground, .calendar-sunday .text-muted { color: rgb(var(--calendar-sunday-text)) !important; }
 .live-tab-content h1 { font-size: clamp(2.75rem, 6vw, 6rem); line-height: .88; }
 .live-tab-content > section > div:nth-of-type(2) > div:first-child { font-size: clamp(.65rem, .9vw, .75rem); }
 section[class*="h-[calc(100vh-6rem)]"] { height: auto !important; min-height: calc(100vh - var(--nav-height)); max-height: none; flex: 0 1 auto; }
@@ -144,6 +166,77 @@ section[class*="h-[calc(100vh-6rem)]"] { height: auto !important; min-height: ca
 .theme-dark .flex.min-h-full.flex-col.gap-6.pb-6 > section:first-child > div:last-child > div:first-child .text-offwhite { color: rgb(var(--color-foreground)) !important; }
 .theme-light .live-posture-scroll > section:first-child > div:last-child,
 .theme-dark .live-posture-scroll > section:first-child > div:last-child { background-color: rgb(var(--color-surface)) !important; color: rgb(var(--color-foreground)) !important; }
+
+/* Posture Analysis calendar cells only; popup presentation remains unchanged except for readable body text. */
+.calibrate-page .calendar-day { background-color: rgb(var(--calendar-cell-bg)) !important; color: rgb(var(--calendar-cell-text)); }
+.calibrate-page .calendar-sunday { background-color: rgb(var(--calendar-sunday-bg)) !important; color: rgb(var(--calendar-sunday-text)); }
+.calibrate-page .calendar-popup { color: #000 !important; }
+.calibrate-page .calendar-popup p:not(.text-mauve) { color: #111 !important; }
+.calibrate-page .calibrate-result-slot .bg-status-bad {
+  background-color: rgb(var(--calendar-sunday-bg)) !important;
+  color: rgb(var(--calendar-sunday-text)) !important;
+}
+
+@media (min-width: 768px) {
+  .calibrate-page {
+    height: 100%;
+    max-height: 100%;
+    overflow-y: hidden;
+  }
+
+  .calibrate-shell {
+    min-height: var(--primary-section-height);
+    height: var(--primary-section-height);
+    max-height: var(--primary-section-height);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .calibrate-columns {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .calibrate-analysis,
+  .calibrate-analysis form,
+  .calibrate-calendar {
+    min-height: 0;
+  }
+
+  .calibrate-analysis form {
+    overflow: hidden;
+  }
+
+  .calibrate-form .calibrate-preview {
+    order: 1;
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .calibrate-form .calibrate-result-slot {
+    order: 3;
+    flex: 0 0 clamp(3.75rem, 8vh, 5rem);
+    min-height: clamp(3.75rem, 8vh, 5rem);
+  }
+
+  .calibrate-form > button {
+    order: 1;
+  }
+
+  .calibrate-form > div:last-child {
+    order: 2;
+    flex: 0 0 auto;
+  }
+
+  .calibrate-form:has(.calibrate-result-slot .bg-panel) > div:last-child {
+    order: 4;
+  }
+
+  .calibrate-calendar-grid {
+    grid-auto-rows: minmax(0, 1fr);
+  }
+}
 
 /* Only the primary content tabs scroll; the shell and utility tabs remain fixed. */
 .tab-viewport { width: 100%; min-width: 0; }
@@ -241,6 +334,12 @@ section[class*="h-[calc(100vh-6rem)]"] { height: auto !important; min-height: ca
   .live-tracking-page .live-metrics > div { min-width: 0; padding: clamp(.625rem, 3vw, .875rem); }
   .live-tracking-page .live-metrics p { overflow-wrap: anywhere; }
   .live-tracking-page > section:last-child { min-height: 0; height: auto; max-height: none; flex: 0 0 auto; }
+}
+
+@media (min-width: 768px) {
+  .tab-scroll.calibrate-page {
+    overflow-y: hidden;
+  }
 }
 .live-metric-label { text-transform: uppercase; }
 .live-axis-chart .recharts-line-curve, .live-axis-chart .recharts-line .recharts-dot { transform: translate3d(0, 0, 0); }

@@ -717,7 +717,7 @@ app.whenReady().then(() => {
     return shown ? { ok: true, native: true } : { ok: false, error: 'Electron reports that native notifications are unsupported or disabled.' }
   })
   ipcMain.handle('get-ai-plan-status', () => ({ available: hasGeminiApiKey() }))
-  ipcMain.handle('generate-posture-plan', (_event, analysis) => generatePosturePlan(Number(analysis?.angle), String(analysis?.category || 'unspecified')))
+  ipcMain.handle('generate-posture-plan', (_event, analysis) => generatePosturePlan(Number(analysis?.angle), String(analysis?.category || 'unspecified'), analysis?.startDate || undefined))
   ipcMain.handle('list-serial-ports', () => listSerialPorts())
   ipcMain.handle('configure-serial', (_event, config) => configureSerialReader(config))
   ipcMain.handle('connect-serial', () => { serialReaderRequested = true; startSerialReader(); return true })

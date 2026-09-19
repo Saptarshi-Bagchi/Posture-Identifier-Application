@@ -21,7 +21,35 @@ function getGeminiApiKey() {
   return process.env.GEMINI_API_KEY?.trim() || ''
 }
 
-function generatePosturePlan(angle, category) {
+function addDays(startDate, offset) {
+  const date = new Date(`${startDate}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return new Date(Date.now() + offset * 86400000)
+  date.setUTCDate(date.getUTCDate() + offset)
+  return date
+}
+
+function routineLength(angle) {
+  return Math.max(3, Math.min(30, Math.ceil(Math.abs(Number(angle)) * 1.5)))
+}
+
+function fallbackCalendar(angle, startDate) {
+  const days = routineLength(angle)
+  const dailyCorrection = Math.max(0.1, Number((angle / days).toFixed(2)))
+  return Array.from({ length: days }, (_, index) => {
+    const targetAngle = Math.max(0, Number((angle - dailyCorrection * (index + 1)).toFixed(2)))
+    return {
+      day: index + 1,
+      date: addDays(startDate, index).toISOString().slice(0, 10),
+      angleToRectify: Number((angle - targetAngle).toFixed(2)),
+      targetAngle,
+      postureTips: ['Keep your head stacked over your shoulders.', 'Reset gently during sitting, standing, and walking.'],
+      avoid: ['Avoid holding one fixed position for long periods.'],
+      discipline: 'Take a brief posture reset and check your alignment before continuing.',
+    }
+  })
+}
+
+function generatePosturePlan(angle, category, startDate = new Date().toISOString().slice(0, 10)) {
   const apiKey = getGeminiApiKey()
   const numericAngle = Number(angle)
   const severity = numericAngle <= 10 ? 'minimal' : numericAngle <= 20 ? 'mild' : numericAngle <= 35 ? 'moderate' : 'severe'
@@ -29,8 +57,8 @@ function generatePosturePlan(angle, category) {
 
   const requestBody = JSON.stringify({
     systemInstruction: { parts: [{ text: POSTURE_PLAN_SYSTEM_PROMPT }] },
-    contents: [{ role: 'user', parts: [{ text: `Measured shoulder-to-hip deviation: ${numericAngle} degrees. Detected posture category: ${category}. Severity: ${severity}.` }] }],
-    generationConfig: { temperature: 0.3, maxOutputTokens: 900, responseMimeType: 'application/json' },
+    contents: [{ role: 'user', parts: [{ text: `Measured neck-to-hip deviation angle from the pose landmark model: ${numericAngle} degrees. Detected posture category: ${category}. Severity: ${severity}. Build the shortest realistic routine of no more than 30 days and start it on ${startDate}.` }] }],
+    generationConfig: { temperature: 0.3, maxOutputTokens: 8192, responseMimeType: 'application/json' },
   })
 
   return new Promise((resolve, reject) => {
@@ -43,14 +71,30 @@ function generatePosturePlan(angle, category) {
         if (response.statusCode < 200 || response.statusCode >= 300) return reject(new Error(`AI plan request failed (${response.statusCode}).`))
         try {
           const responseBody = JSON.parse(body)
-          const text = responseBody.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          const jsonText = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim()
-          const days = JSON.parse(jsonText).days
-          if (!Array.isArray(days) || days.length !== 7 || days.some((day, index) => (
-            day.day !== index + 1 || !day.focus || !day.postureCorrection || !day.targetAngle || !day.angleGuidance || !day.expectation
-          ))) throw new Error('AI returned an incomplete plan.')
-          resolve(days)
-        } catch (_) { reject(new Error('AI returned an unreadable improvement plan.')) }
+          const text = responseBody.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || ''
+          const jsonStart = text.indexOf('{')
+          const jsonEnd = text.lastIndexOf('}')
+          if (jsonStart < 0 || jsonEnd <= jsonStart) throw new Error('AI returned no JSON payload.')
+          const payload = JSON.parse(text.slice(jsonStart, jsonEnd + 1))
+          const calendar = Array.isArray(payload.calendar) ? payload.calendar.map((day) => ({
+            day: Number(day?.day),
+            date: String(day?.date || ''),
+            angleToRectify: Number(day?.angleToRectify),
+            targetAngle: Number(day?.targetAngle),
+            postureTips: Array.isArray(day?.postureTips) ? day.postureTips.map(String).filter(Boolean) : [],
+            avoid: Array.isArray(day?.avoid) ? day.avoid.map(String).filter(Boolean) : [],
+            discipline: String(day?.discipline || '').trim(),
+          })) : []
+          const validCalendar = calendar.length >= 1 && calendar.length <= 30 && calendar.every((day, index) => (
+            day.day === index + 1 && /^\d{4}-\d{2}-\d{2}$/.test(day.date) && Number.isFinite(day.angleToRectify) && Number.isFinite(day.targetAngle) && day.postureTips.length > 0 && day.avoid.length > 0 && day.discipline
+          ))
+          if (!Number.isFinite(Number(payload.measuredAngle)) || Number(payload.measuredAngle) !== numericAngle || !validCalendar) {
+            return resolve({ measuredAngle: numericAngle, calendar: fallbackCalendar(numericAngle, startDate) })
+          }
+          resolve({ measuredAngle: numericAngle, calendar })
+        } catch {
+          resolve({ measuredAngle: numericAngle, calendar: fallbackCalendar(numericAngle, startDate) })
+        }
       })
     })
     request.on('error', () => reject(new Error('Unable to reach the AI plan service. Check your connection and try again.')))
